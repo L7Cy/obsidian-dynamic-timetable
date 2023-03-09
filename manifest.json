@@ -1,0 +1,11 @@
+{
+	"id": "obsidian-taskchute-plugin",
+	"name": "TaskChute",
+	"version": "1.0.0",
+	"minAppVersion": "0.1.0",
+	"description": "TaskChuteもどき",
+	"author": "L7Cy",
+	"authorUrl": "",
+	"fundingUrl": "",
+	"isDesktopOnly": false
+}
