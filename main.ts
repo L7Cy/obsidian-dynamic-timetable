@@ -71,8 +71,28 @@ class TimetableView extends ItemView {
     }
 
     async update(): Promise<void> {
-        const tasks = await getTasks();
+        const tasks = await this.getTasks();
         this.renderTable(tasks);
+    }
+
+    async getTasks(): Promise<string[]> {
+        try {
+            const activeFile = this.app.workspace.getActiveFile();
+
+            if (!activeFile) {
+                throw new Error("No active file");
+            }
+
+            if (!activeFile.path.endsWith(".md")) {
+                throw new Error("Active file is not a Markdown file");
+            }
+
+            const content = await this.app.vault.cachedRead(activeFile);
+            return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
+        } catch (error) {
+            new Notice(error.message);
+            return [];
+        }
     }
 
     async renderTable(tasks: string[]): Promise<void> {
@@ -143,25 +163,5 @@ class TimetableView extends ItemView {
                 ":" +
                 date.getMinutes().toString().padStart(2, "0");
         }
-    }
-}
-
-const getTasks = async (): Promise<string[]> => {
-    try {
-        const activeFile = app.workspace.getActiveFile();
-
-        if (!activeFile) {
-            throw new Error("No active file");
-        }
-
-        if (!activeFile.path.endsWith(".md")) {
-            throw new Error("Active file is not a Markdown file");
-        }
-
-        const content = await app.vault.cachedRead(activeFile);
-        return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
-    } catch (error) {
-        new Notice(error.message);
-        return [];
     }
 }
