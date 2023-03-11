@@ -67,21 +67,22 @@ export default class TaskSchedulePlugin extends Plugin {
         console.log("TaskSchedulePlugin: onload");
 
         this.addCommand({
-            id: "show-schedule",
-            name: "show-schedule",
+            id: "toggle-schedule",
+            name: "Toggle Task Schedule",
             callback: async () => {
                 const activeFile = this.app.workspace.getActiveFile();
                 if (activeFile) {
                     const content = await this.app.vault.read(activeFile);
                     const tasks = content.split("\n").filter((line) => line.startsWith("- [ ]"));
 
-                    // ビューを開く
-                    const leaf = this.app.workspace.getRightLeaf(false);
-                    if (leaf) {
-                        if (leaf.view instanceof ScheduleView) {
-                            await leaf.setViewState({ type: "empty" });
-                            return;
-                        }
+                    const leaves = this.app.workspace.getLeavesOfType("task-schedule");
+
+                    if (leaves.length > 0) {
+                        // 既に開かれているビューがある場合、閉じる
+                        this.app.workspace.detachLeavesOfType("task-schedule");
+                    } else {
+                        // 新しくビューを開く
+                        const leaf = this.app.workspace.getRightLeaf(false);
                         await leaf.setViewState({ type: "task-schedule" });
                         this.app.workspace.revealLeaf(leaf);
 
@@ -106,6 +107,7 @@ export default class TaskSchedulePlugin extends Plugin {
             },
         });
     }
+
     onunload() {
         console.log("TaskSchedulePlugin: onunload");
     }
