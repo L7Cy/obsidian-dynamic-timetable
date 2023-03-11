@@ -1,28 +1,26 @@
-import { Plugin, WorkspaceLeaf, ItemView } from "obsidian";
+import { Plugin, WorkspaceLeaf, ItemView, Notice } from "obsidian";
 
-export default class TaskSchedulePlugin extends Plugin {
-    scheduleView: ScheduleView | null = null;
+export default class DynamicTimetable extends Plugin {
+    scheduleView: TimetableView | null = null;
 
     async onload() {
-        console.log("TaskSchedulePlugin: onload");
+        console.log("DynamicTimetable: onload");
 
         this.addCommand({
-            id: "toggle-schedule",
-            name: "Toggle Task Schedule",
-            callback: async () => {
-                const tasks = await getTasks(this.app);
-
+            id: "toggle-timetable",
+            name: "Show/Hide Timetable",
+            callback: () => {
                 const leaves = this.app.workspace.getLeavesOfType("task-schedule");
 
                 if (leaves.length > 0) {
                     this.app.workspace.detachLeavesOfType("task-schedule");
                 } else {
                     const leaf = this.app.workspace.getRightLeaf(false);
-                    await leaf.setViewState({ type: "task-schedule" });
+                    leaf.setViewState({ type: "task-schedule" });
                     this.app.workspace.revealLeaf(leaf);
 
                     if (!this.scheduleView) {
-                        this.scheduleView = new ScheduleView(leaf, tasks);
+                        this.scheduleView = new TimetableView(leaf);
                         this.registerView("task-schedule", () => this.scheduleView!);
                         this.registerEvent(
                             this.app.vault.on("modify", (file) => {
@@ -41,21 +39,19 @@ export default class TaskSchedulePlugin extends Plugin {
     }
 
     onunload() {
-        console.log("TaskSchedulePlugin: onunload");
+        console.log("Dynamic Timetable: onunload");
     }
 }
 
-interface ScheduleView extends ItemView {
+interface TimetableView extends ItemView {
     containerEl: HTMLDivElement;
     update(): Promise<void>;
 }
 
-class ScheduleView extends ItemView {
-    tasks: string[];
-
-    constructor(leaf: WorkspaceLeaf, tasks: string[]) {
+class TimetableView extends ItemView {
+    constructor(leaf: WorkspaceLeaf) {
         super(leaf);
-        this.tasks = tasks;
+        this.containerEl.addClass("task-schedule");
     }
 
     getViewType(): string {
@@ -75,56 +71,97 @@ class ScheduleView extends ItemView {
     }
 
     async update(): Promise<void> {
+        const tasks = await getTasks();
+        this.renderTable(tasks);
+    }
+
+    async renderTable(tasks: string[]): Promise<void> {
         const { contentEl } = this;
         contentEl.empty();
 
-        const tasks = await getTasks(this.app);
+        const scheduleTable = createTable();
+        const tableHead = scheduleTable.createEl("thead");
+        const tableBody = scheduleTable.createEl("tbody");
+        const tableHeaderRow = tableHead.createEl("tr");
+
+        const HEADER_NAMES: string[] = ['tasks', 'estimate', 'end'];
+
+        for (let i = 0; i < HEADER_NAMES.length; i++) {
+            createTableHeaderCell(HEADER_NAMES[i], tableHeaderRow);
+        }
 
         let currentTime = new Date();
-        let scheduleTable = document.createElement("table");
-        let tableRow = scheduleTable.insertRow();
-        let th1 = document.createElement("th");
-        th1.textContent = "tasks";
-        let th2 = document.createElement("th");
-        th2.textContent = "estimate";
-        let th3 = document.createElement("th");
-        th3.textContent = "end";
-        tableRow.appendChild(th1);
-        tableRow.appendChild(th2);
-        tableRow.appendChild(th3);
+        const MILLISECONDS_IN_MINUTE = 60000;
 
         for (let task of tasks) {
-            let [taskName, timeEstimate] = task.split(":");
-            taskName = taskName
-                .replace(/^-\s*\[\s*.\s*\]\s*/, "")
-                .replace(/\[\[|\]\]/g, "")
-                .trim();
-            let minutes = parseInt(timeEstimate);
-            let endTime = new Date(currentTime.getTime() + minutes * 60000);
-            let endTimeStr =
-                endTime.getHours().toString().padStart(2, "0") +
-                ":" +
-                endTime.getMinutes().toString().padStart(2, "0");
+            const [taskName, timeEstimate] = task.split(":");
+            const parsedTaskName = parseTaskName(taskName);
+            const minutes = parseInt(timeEstimate);
+            const endTime = new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE);
+            const endTimeStr = formatTime(endTime);
 
-            tableRow = scheduleTable.insertRow();
-            let taskNameCell = tableRow.insertCell();
-            taskNameCell.textContent = taskName;
+            const tableRow = createTableRow();
+            await createTableCell(parsedTaskName, tableRow);
+            await createTableCell(`${timeEstimate}m`, tableRow);
+            await createTableCell(endTimeStr, tableRow);
 
-            let timeEstimateCell = tableRow.insertCell();
-            timeEstimateCell.textContent = `${timeEstimate}m`;
-
-            let endTimeCell = tableRow.insertCell();
-            endTimeCell.textContent = endTimeStr;
+            tableBody.appendChild(tableRow);
 
             currentTime = endTime;
         }
 
+        scheduleTable.appendChild(tableHead);
+        scheduleTable.appendChild(tableBody);
         contentEl.appendChild(scheduleTable);
+
+        function createTable(): HTMLTableElement {
+            return contentEl.createEl("table");
+        }
+
+        function createTableHeaderCell(text: string, row: HTMLTableRowElement): void {
+            const cell = row.createEl("th");
+            cell.textContent = text;
+        }
+
+        async function createTableCell(text: string, row: HTMLTableRowElement): Promise<void> {
+            const cell = row.createEl("td");
+            cell.textContent = text;
+        }
+
+        function createTableRow(): HTMLTableRowElement {
+            return tableBody.createEl("tr");
+        }
+
+        function parseTaskName(taskName: string): string {
+            return taskName.replace(/^-\s*\[\s*.\s*\]\s*/, "")
+                .replace(/\[\[|\]\]/g, "")
+                .trim();
+        }
+
+        function formatTime(date: Date): string {
+            return date.getHours().toString().padStart(2, "0") +
+                ":" +
+                date.getMinutes().toString().padStart(2, "0");
+        }
     }
 }
 
-async function getTasks(app: any): Promise<string[]> {
-    const activeFile = app.workspace.getActiveFile();
-    const content = await app.vault.read(activeFile);
-    return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
+const getTasks = async (): Promise<string[]> => {
+    try {
+        const activeFile = app.workspace.getActiveFile();
+
+        if (!activeFile) {
+            throw new Error("No active file");
+        }
+
+        if (!activeFile.path.endsWith(".md")) {
+            throw new Error("Active file is not a Markdown file");
+        }
+
+        const content = await app.vault.cachedRead(activeFile);
+        return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
+    } catch (error) {
+        new Notice(error.message);
+        return [];
+    }
 }
