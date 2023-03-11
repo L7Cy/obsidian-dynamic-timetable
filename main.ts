@@ -1,5 +1,4 @@
-import { Plugin, WorkspaceLeaf, addIcon, ItemView } from "obsidian";
-import { App, TFile } from "obsidian";
+import { Plugin, WorkspaceLeaf, ItemView } from "obsidian";
 
 export default class TaskSchedulePlugin extends Plugin {
     scheduleView: ScheduleView | null = null;
@@ -11,32 +10,31 @@ export default class TaskSchedulePlugin extends Plugin {
             id: "toggle-schedule",
             name: "Toggle Task Schedule",
             callback: async () => {
-                const tasks = await getTasks();
+                const tasks = await getTasks(this.app);
 
                 const leaves = this.app.workspace.getLeavesOfType("task-schedule");
 
                 if (leaves.length > 0) {
-                    // 既に開かれているビューがある場合、閉じる
                     this.app.workspace.detachLeavesOfType("task-schedule");
                 } else {
-                    // 新しくビューを開く
                     const leaf = this.app.workspace.getRightLeaf(false);
                     await leaf.setViewState({ type: "task-schedule" });
                     this.app.workspace.revealLeaf(leaf);
 
-                    // Viewの登録
                     if (!this.scheduleView) {
                         this.scheduleView = new ScheduleView(leaf, tasks);
                         this.registerView("task-schedule", () => this.scheduleView!);
                         this.registerEvent(
                             this.app.vault.on("modify", (file) => {
-                                if (file === this.app.workspace.getActiveFile() && this.scheduleView) {
+                                if (
+                                    file === this.app.workspace.getActiveFile() &&
+                                    this.scheduleView
+                                ) {
                                     this.scheduleView.update();
                                 }
                             })
                         );
                     }
-
                 }
             },
         });
@@ -47,13 +45,11 @@ export default class TaskSchedulePlugin extends Plugin {
     }
 }
 
-// Viewの型を定義
 interface ScheduleView extends ItemView {
     containerEl: HTMLDivElement;
     update(): Promise<void>;
 }
 
-// ビューを定義
 class ScheduleView extends ItemView {
     tasks: string[];
 
@@ -75,24 +71,31 @@ class ScheduleView extends ItemView {
     }
 
     async onClose(): Promise<void> {
-        // 特に何もしない
+        // Do nothing
     }
 
     async update(): Promise<void> {
         const { contentEl } = this;
-        contentEl.innerHTML = '';
+        contentEl.innerHTML = "";
 
-        const tasks = await getTasks();
+        const tasks = await getTasks(this.app);
 
         let currentTime = new Date();
-        let scheduleTable = "<table><tr><th>tasks</th><th>estimate</th><th>end</th></tr>";
+        let scheduleTable =
+            "<table><tr><th>tasks</th><th>estimate</th><th>end</th></tr>";
 
         for (let task of tasks) {
             let [taskName, timeEstimate] = task.split(":");
-            taskName = taskName.replace(/^-\s\[.\]\s/, '').replace(/\[\[|\]\]/g, '').trim();
+            taskName = taskName
+                .replace(/^-\s*\[\s*.\s*\]\s*/, "")
+                .replace(/\[\[|\]\]/g, "")
+                .trim();
             let minutes = parseInt(timeEstimate);
             let endTime = new Date(currentTime.getTime() + minutes * 60000);
-            let endTimeStr = endTime.getHours().toString().padStart(2, "0") + ":" + endTime.getMinutes().toString().padStart(2, "0");
+            let endTimeStr =
+                endTime.getHours().toString().padStart(2, "0") +
+                ":" +
+                endTime.getMinutes().toString().padStart(2, "0");
             scheduleTable += `<tr><td>${taskName}</td><td>${timeEstimate}m</td><td>${endTimeStr}</td></tr>`;
             currentTime = endTime;
         }
@@ -103,8 +106,8 @@ class ScheduleView extends ItemView {
     }
 }
 
-export async function getTasks(): Promise<string[]> {
-    const activeFile = this.app.workspace.getActiveFile();
+async function getTasks(app: any): Promise<string[]> {
+    const activeFile = app.workspace.getActiveFile();
     const content = await app.vault.read(activeFile);
-    return content.split("\n").filter((line) => line.startsWith("- [ ]"));
+    return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
 }
