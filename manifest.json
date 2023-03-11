@@ -1,9 +1,9 @@
 {
-	"id": "obsidian-taskchute-plugin",
-	"name": "TaskChute",
+	"id": "obsidian-dynamic-timetable",
+	"name": "Dynamic Timetable",
 	"version": "1.0.0",
-	"minAppVersion": "0.1.0",
-	"description": "TaskChuteもどき",
+	"minAppVersion": "1.1.16",
+	"description": "Calculate the estimated time of completion from the estimated time of the task and dynamically create a timetable.",
 	"author": "L7Cy",
 	"authorUrl": "",
 	"fundingUrl": "",
