@@ -76,13 +76,22 @@ class ScheduleView extends ItemView {
 
     async update(): Promise<void> {
         const { contentEl } = this;
-        contentEl.innerHTML = "";
+        contentEl.empty();
 
         const tasks = await getTasks(this.app);
 
         let currentTime = new Date();
-        let scheduleTable =
-            "<table><tr><th>tasks</th><th>estimate</th><th>end</th></tr>";
+        let scheduleTable = document.createElement("table");
+        let tableRow = scheduleTable.insertRow();
+        let th1 = document.createElement("th");
+        th1.textContent = "tasks";
+        let th2 = document.createElement("th");
+        th2.textContent = "estimate";
+        let th3 = document.createElement("th");
+        th3.textContent = "end";
+        tableRow.appendChild(th1);
+        tableRow.appendChild(th2);
+        tableRow.appendChild(th3);
 
         for (let task of tasks) {
             let [taskName, timeEstimate] = task.split(":");
@@ -96,13 +105,21 @@ class ScheduleView extends ItemView {
                 endTime.getHours().toString().padStart(2, "0") +
                 ":" +
                 endTime.getMinutes().toString().padStart(2, "0");
-            scheduleTable += `<tr><td>${taskName}</td><td>${timeEstimate}m</td><td>${endTimeStr}</td></tr>`;
+
+            tableRow = scheduleTable.insertRow();
+            let taskNameCell = tableRow.insertCell();
+            taskNameCell.textContent = taskName;
+
+            let timeEstimateCell = tableRow.insertCell();
+            timeEstimateCell.textContent = `${timeEstimate}m`;
+
+            let endTimeCell = tableRow.insertCell();
+            endTimeCell.textContent = endTimeStr;
+
             currentTime = endTime;
         }
 
-        scheduleTable += "</table>";
-        const tableDiv = contentEl.createDiv();
-        tableDiv.innerHTML = scheduleTable;
+        contentEl.appendChild(scheduleTable);
     }
 }
 
