@@ -1,4 +1,5 @@
 import { Plugin, WorkspaceLeaf, addIcon, ItemView } from "obsidian";
+import { App, TFile } from "obsidian";
 
 export default class TaskSchedulePlugin extends Plugin {
     scheduleView: ScheduleView | null = null;
@@ -10,10 +11,7 @@ export default class TaskSchedulePlugin extends Plugin {
             id: "toggle-schedule",
             name: "Toggle Task Schedule",
             callback: async () => {
-                const activeFile = this.app.workspace.getActiveFile();
-                if (!activeFile) return;
-                const content = await this.app.vault.read(activeFile);
-                const tasks = content.split("\n").filter((line) => line.startsWith("- [ ]"));
+                const tasks = await getTasks();
 
                 const leaves = this.app.workspace.getLeavesOfType("task-schedule");
 
@@ -32,7 +30,7 @@ export default class TaskSchedulePlugin extends Plugin {
                         this.registerView("task-schedule", () => this.scheduleView!);
                         this.registerEvent(
                             this.app.vault.on("modify", (file) => {
-                                if (file === activeFile && this.scheduleView) {
+                                if (file === this.app.workspace.getActiveFile() && this.scheduleView) {
                                     this.scheduleView.update();
                                 }
                             })
@@ -84,11 +82,7 @@ class ScheduleView extends ItemView {
         const { contentEl } = this;
         contentEl.innerHTML = '';
 
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) return;
-
-        const content = await this.app.vault.read(activeFile);
-        const tasks = content.split("\n").filter((line) => line.startsWith("- [ ]"));
+        const tasks = await getTasks();
 
         let currentTime = new Date();
         let scheduleTable = "<table><tr><th>tasks</th><th>estimate</th><th>end</th></tr>";
@@ -107,4 +101,10 @@ class ScheduleView extends ItemView {
         const tableDiv = contentEl.createDiv();
         tableDiv.innerHTML = scheduleTable;
     }
+}
+
+export async function getTasks(): Promise<string[]> {
+    const activeFile = this.app.workspace.getActiveFile();
+    const content = await app.vault.read(activeFile);
+    return content.split("\n").filter((line) => line.startsWith("- [ ]"));
 }
