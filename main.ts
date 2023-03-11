@@ -90,19 +90,17 @@ export default class TaskSchedulePlugin extends Plugin {
                         if (!this.scheduleView) {
                             this.scheduleView = new ScheduleView(leaf, tasks);
                             this.registerView("task-schedule", () => this.scheduleView!);
-                        } else {
-                            this.scheduleView.tasks = tasks;
-                            await this.scheduleView.update();
+                            this.registerEvent(
+                                this.app.vault.on("modify", (file) => {
+                                    if (file === activeFile && this.scheduleView) {
+                                        this.scheduleView.update();
+                                    }
+                                })
+                            );
                         }
 
-                        this.registerEvent(
-                            this.app.vault.on("modify", (file) => {
-                                if (file === activeFile && this.scheduleView) {
-                                    this.scheduleView.update();
-                                }
-                            })
-                        );
                     }
+
                 }
             },
         });
