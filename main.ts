@@ -1,10 +1,15 @@
-import { Plugin, WorkspaceLeaf, ItemView, Notice } from "obsidian";
+import { Plugin, WorkspaceLeaf, ItemView, Notice, App, TFile } from "obsidian";
+import { PluginSettingTab, Setting } from "obsidian";
 
 export default class DynamicTimetable extends Plugin {
+    settings: DynamicTimetableSettings;
+
     scheduleView: TimetableView | null = null;
 
     async onload() {
         console.log("DynamicTimetable: onload");
+
+        await this.loadSettings();
 
         this.addCommand({
             id: "toggle-timetable",
@@ -20,7 +25,7 @@ export default class DynamicTimetable extends Plugin {
                     this.app.workspace.revealLeaf(leaf);
 
                     if (!this.scheduleView) {
-                        this.scheduleView = new TimetableView(leaf);
+                        this.scheduleView = new TimetableView(leaf, this);
                         this.registerView("task-schedule", () => this.scheduleView!);
                         this.registerEvent(
                             this.app.vault.on("modify", (file) => {
@@ -36,10 +41,14 @@ export default class DynamicTimetable extends Plugin {
                 }
             },
         });
-    }
 
-    onunload() {
-        console.log("Dynamic Timetable: onunload");
+        this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
+    }
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+    async saveSettings() {
+        await this.saveData(this.settings);
     }
 }
 
@@ -50,10 +59,11 @@ interface TimetableView extends ItemView {
 
 class TimetableView extends ItemView {
     private readonly MILLISECONDS_IN_MINUTE = 60000;
-    private readonly HEADER_NAMES: string[] = ['tasks', 'estimate', 'end'];
+    private readonly plugin: DynamicTimetable;
 
-    constructor(leaf: WorkspaceLeaf) {
+    constructor(leaf: WorkspaceLeaf, plugin: DynamicTimetable) {
         super(leaf);
+        this.plugin = plugin;
         this.containerEl.addClass("task-schedule");
     }
 
@@ -80,17 +90,29 @@ class TimetableView extends ItemView {
 
     async getTasks(): Promise<string[]> {
         try {
-            const activeFile = this.app.workspace.getActiveFile();
+            let content = "";
+            const filePath = this.plugin.settings.filePath;
 
-            if (!activeFile) {
-                throw new Error("No active file");
+            if (filePath) {
+                const targetFile = this.app.vault.getAbstractFileByPath(filePath);
+                if (!targetFile) {
+                    throw new Error(`File not found: ${filePath}`);
+                }
+                if (!(targetFile instanceof TFile)) {
+                    throw new Error(`File is not a Markdown file: ${filePath}`);
+                }
+                content = await this.app.vault.cachedRead(targetFile);
+            } else {
+                const activeFile = this.app.workspace.getActiveFile();
+                if (!activeFile) {
+                    throw new Error("No active file");
+                }
+                if (!(activeFile instanceof TFile)) {
+                    throw new Error("Active file is not a Markdown file");
+                }
+                content = await this.app.vault.cachedRead(activeFile);
             }
 
-            if (!activeFile.path.endsWith(".md")) {
-                throw new Error("Active file is not a Markdown file");
-            }
-
-            const content = await this.app.vault.cachedRead(activeFile);
             return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
         } catch (error) {
             new Notice(error.message);
@@ -137,8 +159,8 @@ class TimetableView extends ItemView {
         const tableBody = scheduleTable.createEl("tbody");
         const tableHeaderRow = tableHead.createEl("tr");
 
-        for (let i = 0; i < this.HEADER_NAMES.length; i++) {
-            createTableHeaderCell(this.HEADER_NAMES[i], tableHeaderRow);
+        for (let i = 0; i < this.plugin.settings.headerNames.length; i++) {
+            createTableHeaderCell(this.plugin.settings.headerNames[i], tableHeaderRow);
         }
 
         let currentTime = new Date();
@@ -163,5 +185,57 @@ class TimetableView extends ItemView {
         scheduleTable.appendChild(tableHead);
         scheduleTable.appendChild(tableBody);
         contentEl.appendChild(scheduleTable);
+    }
+}
+
+interface DynamicTimetableSettings {
+    headerNames: string[];
+    filePath: string | null;
+}
+const DEFAULT_SETTINGS: DynamicTimetableSettings = {
+    headerNames: ['tasks', 'estimate', 'end'],
+    filePath: null
+};
+
+class DynamicTimetableSettingTab extends PluginSettingTab {
+    plugin: DynamicTimetable;
+
+    constructor(app: App, plugin: DynamicTimetable) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
+
+    display(): void {
+        const { containerEl } = this;
+
+        containerEl.empty();
+
+
+        new Setting(containerEl)
+            .setName('File Path')
+            .setDesc('Enter the path to the Markdown file to get task list from. Leave blank to use active file.')
+            .addText(text => text
+                .setValue(this.plugin.settings.filePath || '')
+                .onChange(async (value) => {
+                    this.plugin.settings.filePath = value.trim() || null;
+                    await this.plugin.saveData(this.plugin.settings);
+                    this.plugin.scheduleView?.update();
+                }));
+
+        const headerNames = this.plugin.settings.headerNames;
+
+        for (let i = 0; i < headerNames.length; i++) {
+            new Setting(containerEl)
+                .setName(`Header Name ${i + 1}`)
+                .setDesc(`Enter the name of header ${i + 1}`)
+                .addText(text => text
+                    .setValue(headerNames[i])
+                    .onChange(async (value) => {
+                        headerNames[i] = value;
+                        await this.plugin.saveSettings();
+                        this.plugin.scheduleView?.update();
+                    })
+                );
+        }
     }
 }
