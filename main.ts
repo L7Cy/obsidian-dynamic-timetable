@@ -113,14 +113,15 @@ class TimetableView extends ItemView {
                 content = await this.app.vault.cachedRead(activeFile);
             }
 
-            const separator = this.plugin.settings.taskEstimateDelimiter;
-            const tasks: string[] = [];
-            content.split("\n").forEach((line: string) => {
-                const separatorCount = line.split(separator).length - 1;
-                if (separatorCount === 1 && line.startsWith("- [ ]")) {
-                    tasks.push(line.trim());
-                }
-            });
+        const separator = this.plugin.settings.taskEstimateDelimiter;
+        const tasks: string[] = [];
+        content.split("\n").forEach((line: string) => {
+            line = line.replace(/^\t+/, ""); // Replace tab characters at the beginning of the line with spaces
+            const separatorCount = line.split(separator).length - 1;
+            if (separatorCount === 1 && line.startsWith("- [ ]")) {
+                tasks.push(line.trim());
+            }
+        });
 
             return tasks;
         } catch (error) {
