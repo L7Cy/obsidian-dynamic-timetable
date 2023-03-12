@@ -49,6 +49,9 @@ interface TimetableView extends ItemView {
 }
 
 class TimetableView extends ItemView {
+    private readonly MILLISECONDS_IN_MINUTE = 60000;
+    private readonly HEADER_NAMES: string[] = ['tasks', 'estimate', 'end'];
+
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
         this.containerEl.addClass("task-schedule");
@@ -99,41 +102,6 @@ class TimetableView extends ItemView {
         const { contentEl } = this;
         contentEl.empty();
 
-        const scheduleTable = createTable();
-        const tableHead = scheduleTable.createEl("thead");
-        const tableBody = scheduleTable.createEl("tbody");
-        const tableHeaderRow = tableHead.createEl("tr");
-
-        const HEADER_NAMES: string[] = ['tasks', 'estimate', 'end'];
-
-        for (let i = 0; i < HEADER_NAMES.length; i++) {
-            createTableHeaderCell(HEADER_NAMES[i], tableHeaderRow);
-        }
-
-        let currentTime = new Date();
-        const MILLISECONDS_IN_MINUTE = 60000;
-
-        for (let task of tasks) {
-            const [taskName, timeEstimate] = task.split(":");
-            const parsedTaskName = parseTaskName(taskName);
-            const minutes = parseInt(timeEstimate);
-            const endTime = new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE);
-            const endTimeStr = formatTime(endTime);
-
-            const tableRow = createTableRow();
-            await createTableCell(parsedTaskName, tableRow);
-            await createTableCell(`${timeEstimate}m`, tableRow);
-            await createTableCell(endTimeStr, tableRow);
-
-            tableBody.appendChild(tableRow);
-
-            currentTime = endTime;
-        }
-
-        scheduleTable.appendChild(tableHead);
-        scheduleTable.appendChild(tableBody);
-        contentEl.appendChild(scheduleTable);
-
         function createTable(): HTMLTableElement {
             return contentEl.createEl("table");
         }
@@ -163,5 +131,37 @@ class TimetableView extends ItemView {
                 ":" +
                 date.getMinutes().toString().padStart(2, "0");
         }
+
+        const scheduleTable = createTable();
+        const tableHead = scheduleTable.createEl("thead");
+        const tableBody = scheduleTable.createEl("tbody");
+        const tableHeaderRow = tableHead.createEl("tr");
+
+        for (let i = 0; i < this.HEADER_NAMES.length; i++) {
+            createTableHeaderCell(this.HEADER_NAMES[i], tableHeaderRow);
+        }
+
+        let currentTime = new Date();
+
+        for (let task of tasks) {
+            const [taskName, timeEstimate] = task.split(":");
+            const parsedTaskName = parseTaskName(taskName);
+            const minutes = parseInt(timeEstimate);
+            const endTime = new Date(currentTime.getTime() + minutes * this.MILLISECONDS_IN_MINUTE);
+            const endTimeStr = formatTime(endTime);
+
+            const tableRow = createTableRow();
+            await createTableCell(parsedTaskName, tableRow);
+            await createTableCell(`${timeEstimate}m`, tableRow);
+            await createTableCell(endTimeStr, tableRow);
+
+            tableBody.appendChild(tableRow);
+
+            currentTime = endTime;
+        }
+
+        scheduleTable.appendChild(tableHead);
+        scheduleTable.appendChild(tableBody);
+        contentEl.appendChild(scheduleTable);
     }
 }
