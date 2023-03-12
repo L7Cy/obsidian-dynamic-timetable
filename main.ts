@@ -1,10 +1,8 @@
-import { Plugin, WorkspaceLeaf, ItemView, Notice, App, TFile } from "obsidian";
-import { PluginSettingTab, Setting } from "obsidian";
+import { Plugin, WorkspaceLeaf, ItemView, App, TFile, PluginSettingTab, Setting } from "obsidian";
 
 export default class DynamicTimetable extends Plugin {
     settings: DynamicTimetableSettings;
-
-    scheduleView: TimetableView | null = null;
+    view: TimetableView | null = null;
 
     async onload() {
         console.log("DynamicTimetable: onload");
@@ -14,38 +12,36 @@ export default class DynamicTimetable extends Plugin {
         this.addCommand({
             id: "toggle-timetable",
             name: "Show/Hide Timetable",
-            callback: () => {
-                const leaves = this.app.workspace.getLeavesOfType("task-schedule");
-
-                if (leaves.length > 0) {
-                    this.app.workspace.detachLeavesOfType("task-schedule");
-                } else {
-                    const leaf = this.app.workspace.getRightLeaf(false);
-                    leaf.setViewState({ type: "task-schedule" });
-                    this.app.workspace.revealLeaf(leaf);
-
-                    if (!this.scheduleView) {
-                        this.scheduleView = new TimetableView(leaf, this);
-                        this.registerView("task-schedule", () => this.scheduleView!);
-                        this.registerEvent(
-                            this.app.vault.on("modify", (file) => {
-                                if (
-                                    file === this.app.workspace.getActiveFile() &&
-                                    this.scheduleView
-                                ) {
-                                    this.scheduleView.update();
-                                }
-                            })
-                        );
-                    }
-                }
-            },
+            callback: this.toggleTimetable.bind(this)
         });
 
         this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
     }
+
+    toggleTimetable() {
+        const leaves = this.app.workspace.getLeavesOfType("Timetable");
+        if (leaves.length > 0) {
+            this.app.workspace.detachLeavesOfType("Timetable");
+        } else {
+            const leaf = this.app.workspace.getRightLeaf(false);
+            leaf.setViewState({ type: "Timetable" });
+            this.app.workspace.revealLeaf(leaf);
+            if (!this.view) {
+                this.view = new TimetableView(leaf, this);
+                this.registerView("Timetable", () => this.view!);
+                this.registerEvent(
+                    this.app.vault.on("modify", (file) => {
+                        if (file === this.app.workspace.getActiveFile() && this.view) {
+                            this.view.update();
+                        }
+                    })
+                );
+            }
+        }
+    }
+
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, this.loadData() || {});
     }
     async saveSettings() {
         await this.saveData(this.settings);
@@ -64,15 +60,19 @@ class TimetableView extends ItemView {
     constructor(leaf: WorkspaceLeaf, plugin: DynamicTimetable) {
         super(leaf);
         this.plugin = plugin;
-        this.containerEl.addClass("task-schedule");
+        this.initializeView();
+    }
+
+    private initializeView(): void {
+        this.containerEl.addClass("Timetable");
     }
 
     getViewType(): string {
-        return "task-schedule";
+        return "Timetable";
     }
 
     getDisplayText(): string {
-        return "Task Schedule";
+        return "Timetable";
     }
 
     async onOpen(): Promise<void> {
@@ -89,45 +89,42 @@ class TimetableView extends ItemView {
     }
 
     async getTasks(): Promise<string[]> {
-        try {
-            let content = "";
-            const filePath = this.plugin.settings.filePath;
+        const content = await this.getContent();
+        return this.parseTasksFromContent(content);
+    }
 
-            if (filePath) {
-                const targetFile = this.app.vault.getAbstractFileByPath(filePath);
-                if (!targetFile) {
-                    throw new Error(`File not found: ${filePath}`);
-                }
-                if (!(targetFile instanceof TFile)) {
-                    throw new Error(`File is not a Markdown file: ${filePath}`);
-                }
-                content = await this.app.vault.cachedRead(targetFile);
-            } else {
-                const activeFile = this.app.workspace.getActiveFile();
-                if (!activeFile) {
-                    throw new Error("No active file");
-                }
-                if (!(activeFile instanceof TFile)) {
-                    throw new Error("Active file is not a Markdown file");
-                }
-                content = await this.app.vault.cachedRead(activeFile);
+    async getContent(): Promise<string> {
+        const filePath = this.plugin.settings.filePath;
+        let file: TFile;
+
+        if (filePath) {
+            file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+            if (!file) {
+                throw new Error(`File not found: ${filePath}`);
             }
+        } else {
+            file = this.app.workspace.getActiveFile() as TFile;
+            if (!file || !(file instanceof TFile)) {
+                throw new Error("No active file or active file is not a Markdown file");
+            }
+        }
+        return await this.app.vault.cachedRead(file);
+    }
 
+    parseTasksFromContent(content: string): string[] {
         const separator = this.plugin.settings.taskEstimateDelimiter;
         const tasks: string[] = [];
-        content.split("\n").forEach((line: string) => {
-            line = line.replace(/^\t+/, ""); // Replace tab characters at the beginning of the line with spaces
-            const separatorCount = line.split(separator).length - 1;
-            if (separatorCount === 1 && line.startsWith("- [ ]")) {
-                tasks.push(line.trim());
-            }
-        });
 
-            return tasks;
-        } catch (error) {
-            new Notice(error.message);
-            return [];
+        for (const line of content.split("\n")) {
+            const task = line.trim();
+            if (task.startsWith("- [ ]")) {
+                const [taskName, timeEstimate] = task.replace(/^\- \[\] /, '').split(separator);
+                if (taskName) {
+                    tasks.push(`${taskName.trim()}${separator}${timeEstimate ? timeEstimate.trim() : ''}`);
+                }
+            }
         }
+        return tasks;
     }
 
     async renderTable(tasks: string[]): Promise<void> {
@@ -159,9 +156,7 @@ class TimetableView extends ItemView {
         }
 
         function formatTime(date: Date): string {
-            return date.getHours().toString().padStart(2, "0") +
-                ":" +
-                date.getMinutes().toString().padStart(2, "0");
+            return new Intl.DateTimeFormat(navigator.language, { hour: "numeric", minute: "numeric" }).format(date);
         }
 
         const scheduleTable = createTable();
@@ -169,11 +164,11 @@ class TimetableView extends ItemView {
         const tableBody = scheduleTable.createEl("tbody");
         const tableHeaderRow = tableHead.createEl("tr");
 
-        createTableHeaderCell(this.plugin.settings.headerNames[0], tableHeaderRow); // task
+        createTableHeaderCell(this.plugin.settings.headerNames[0], tableHeaderRow);
         if (this.plugin.settings.showEstimate) {
-            createTableHeaderCell(this.plugin.settings.headerNames[1], tableHeaderRow); // estimate
+            createTableHeaderCell(this.plugin.settings.headerNames[1], tableHeaderRow);
         }
-        createTableHeaderCell(this.plugin.settings.headerNames[2], tableHeaderRow); // end
+        createTableHeaderCell(this.plugin.settings.headerNames[2], tableHeaderRow);
 
         let currentTime = new Date();
 
@@ -186,11 +181,11 @@ class TimetableView extends ItemView {
             const endTimeStr = formatTime(endTime);
 
             const tableRow = createTableRow();
-            await createTableCell(parsedTaskName, tableRow); // estimate
+            await createTableCell(parsedTaskName, tableRow);
             if (this.plugin.settings.showEstimate) {
                 await createTableCell(`${timeEstimate}m`, tableRow);
             }
-            await createTableCell(endTimeStr, tableRow); // end
+            await createTableCell(endTimeStr, tableRow);
 
             tableBody.appendChild(tableRow);
 
@@ -208,6 +203,7 @@ interface DynamicTimetableSettings {
     showEstimate: boolean;
     taskEstimateDelimiter: string;
     headerNames: string[];
+    [key: string]: string | boolean | string[] | null | undefined;
 }
 const DEFAULT_SETTINGS: DynamicTimetableSettings = {
     filePath: null,
@@ -229,6 +225,12 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
+        const handleTextInputChange = async (settingName: keyof DynamicTimetableSettings, newValue: string | null) => {
+            this.plugin.settings[settingName] = newValue;
+            await this.plugin.saveData(this.plugin.settings);
+            this.plugin.view?.update();
+        }
+
         new Setting(containerEl)
             .setName("File Path")
             .setDesc("Enter the path to the Markdown file to get task list from. Leave blank to use active file.")
@@ -241,9 +243,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                         return;
                     }
                     const value = ev.target.value.trim() || null;
-                    this.plugin.settings.filePath = value;
-                    await this.plugin.saveData(this.plugin.settings);
-                    this.plugin.scheduleView?.update();
+                    await handleTextInputChange("filePath", value);
                 });
                 return el;
             });
@@ -256,7 +256,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.showEstimate = value;
                     await this.plugin.saveSettings();
-                    this.plugin.scheduleView?.update();
+                    this.plugin.view?.update();
                 }));
 
         new Setting(containerEl)
@@ -265,9 +265,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setValue(this.plugin.settings.taskEstimateDelimiter)
                 .onChange(async (value) => {
-                    this.plugin.settings.taskEstimateDelimiter = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.scheduleView?.update();
+                    await handleTextInputChange("taskEstimateDelimiter", value);
                 }));
 
         const headerNames = this.plugin.settings.headerNames;
@@ -281,7 +279,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         headerNames[i] = value;
                         await this.plugin.saveSettings();
-                        this.plugin.scheduleView?.update();
+                        this.plugin.view?.update();
                     })
                 );
         }
