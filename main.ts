@@ -113,7 +113,16 @@ class TimetableView extends ItemView {
                 content = await this.app.vault.cachedRead(activeFile);
             }
 
-            return content.split("\n").filter((line: string) => line.startsWith("- [ ]"));
+            const separator = this.plugin.settings.taskEstimateDelimiter;
+            const tasks: string[] = [];
+            content.split("\n").forEach((line: string) => {
+                const separatorCount = line.split(separator).length - 1;
+                if (separatorCount === 1 && line.startsWith("- [ ]")) {
+                    tasks.push(line.trim());
+                }
+            });
+
+            return tasks;
         } catch (error) {
             new Notice(error.message);
             return [];
