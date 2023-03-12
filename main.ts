@@ -159,9 +159,11 @@ class TimetableView extends ItemView {
         const tableBody = scheduleTable.createEl("tbody");
         const tableHeaderRow = tableHead.createEl("tr");
 
-        for (let i = 0; i < this.plugin.settings.headerNames.length; i++) {
-            createTableHeaderCell(this.plugin.settings.headerNames[i], tableHeaderRow);
+        createTableHeaderCell(this.plugin.settings.headerNames[0], tableHeaderRow); // task
+        if (this.plugin.settings.showEstimate) {
+            createTableHeaderCell(this.plugin.settings.headerNames[1], tableHeaderRow); // estimate
         }
+        createTableHeaderCell(this.plugin.settings.headerNames[2], tableHeaderRow); // end
 
         let currentTime = new Date();
 
@@ -173,9 +175,11 @@ class TimetableView extends ItemView {
             const endTimeStr = formatTime(endTime);
 
             const tableRow = createTableRow();
-            await createTableCell(parsedTaskName, tableRow);
-            await createTableCell(`${timeEstimate}m`, tableRow);
-            await createTableCell(endTimeStr, tableRow);
+            await createTableCell(parsedTaskName, tableRow); // estimate
+            if (this.plugin.settings.showEstimate) {
+                await createTableCell(`${timeEstimate}m`, tableRow);
+            }
+            await createTableCell(endTimeStr, tableRow); // end
 
             tableBody.appendChild(tableRow);
 
@@ -189,12 +193,14 @@ class TimetableView extends ItemView {
 }
 
 interface DynamicTimetableSettings {
-    headerNames: string[];
     filePath: string | null;
+    showEstimate: boolean;
+    headerNames: string[];
 }
 const DEFAULT_SETTINGS: DynamicTimetableSettings = {
+    filePath: null,
+    showEstimate: false,
     headerNames: ['tasks', 'estimate', 'end'],
-    filePath: null
 };
 
 class DynamicTimetableSettingTab extends PluginSettingTab {
@@ -228,6 +234,17 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                 });
                 return el;
             });
+
+        new Setting(containerEl)
+            .setName('Show Estimate Column')
+            .setDesc('Show/hide the estimate column')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showEstimate)
+                .onChange(async (value) => {
+                    this.plugin.settings.showEstimate = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.scheduleView?.update();
+                }));
 
         const headerNames = this.plugin.settings.headerNames;
 
