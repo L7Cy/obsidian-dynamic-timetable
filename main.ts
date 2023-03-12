@@ -118,6 +118,7 @@ class TimetableView extends ItemView {
         const tasks = content.split("\n")
             .map(line => line.trim())
             .filter(line => line.startsWith("- [ ]"))
+            .filter(task => task.includes(separator))
             .map(task => {
                 const [taskName, timeEstimate] = task.replace(/^\- \[\] /, '').split(separator);
                 const parsedTaskName = taskName.replace(/^-\s*\[\s*.\s*\]\s*/, "").replace(/\[\[|\]\]/g, "").trim();
@@ -136,7 +137,7 @@ class TimetableView extends ItemView {
             return contentEl.createEl("table");
         }
 
-        function createTableCell(text: string, isHeader = false): HTMLTableHeaderCellElement | HTMLTableDataCellElement {
+        function createTableCell(text: string, isHeader = false) {
             const cell = isHeader ? document.createElement("th") : document.createElement("td");
             cell.textContent = text;
             return cell;
