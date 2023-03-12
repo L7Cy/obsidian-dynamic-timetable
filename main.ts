@@ -168,7 +168,8 @@ class TimetableView extends ItemView {
         let currentTime = new Date();
 
         for (let task of tasks) {
-            const [taskName, timeEstimate] = task.split(":");
+            const taskEstimateDelimiter = this.plugin.settings.taskEstimateDelimiter;
+            const [taskName, timeEstimate] = task.split(taskEstimateDelimiter);
             const parsedTaskName = parseTaskName(taskName);
             const minutes = parseInt(timeEstimate);
             const endTime = new Date(currentTime.getTime() + minutes * this.MILLISECONDS_IN_MINUTE);
@@ -195,11 +196,13 @@ class TimetableView extends ItemView {
 interface DynamicTimetableSettings {
     filePath: string | null;
     showEstimate: boolean;
+    taskEstimateDelimiter: string;
     headerNames: string[];
 }
 const DEFAULT_SETTINGS: DynamicTimetableSettings = {
     filePath: null,
     showEstimate: false,
+    taskEstimateDelimiter: ':',
     headerNames: ['tasks', 'estimate', 'end'],
 };
 
@@ -242,6 +245,17 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.showEstimate)
                 .onChange(async (value) => {
                     this.plugin.settings.showEstimate = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.scheduleView?.update();
+                }));
+
+        new Setting(containerEl)
+            .setName('Task/Estimate Delimiter')
+            .setDesc('Enter the delimiter to use between the task name and estimate')
+            .addText(text => text
+                .setValue(this.plugin.settings.taskEstimateDelimiter)
+                .onChange(async (value) => {
+                    this.plugin.settings.taskEstimateDelimiter = value;
                     await this.plugin.saveSettings();
                     this.plugin.scheduleView?.update();
                 }));
