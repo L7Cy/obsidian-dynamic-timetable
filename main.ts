@@ -210,17 +210,24 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
 
         containerEl.empty();
 
-
         new Setting(containerEl)
-            .setName('File Path')
-            .setDesc('Enter the path to the Markdown file to get task list from. Leave blank to use active file.')
-            .addText(text => text
-                .setValue(this.plugin.settings.filePath || '')
-                .onChange(async (value) => {
-                    this.plugin.settings.filePath = value.trim() || null;
+            .setName("File Path")
+            .setDesc("Enter the path to the Markdown file to get task list from. Leave blank to use active file.")
+            .addText((text) => {
+                const el = text
+                    .setPlaceholder("/path/to/target/file.md")
+                    .setValue(this.plugin.settings.filePath || "");
+                el.inputEl.addEventListener("change", async (ev) => {
+                    if (!(ev.target instanceof HTMLInputElement)) {
+                        return;
+                    }
+                    const value = ev.target.value.trim() || null;
+                    this.plugin.settings.filePath = value;
                     await this.plugin.saveData(this.plugin.settings);
                     this.plugin.scheduleView?.update();
-                }));
+                });
+                return el;
+            });
 
         const headerNames = this.plugin.settings.headerNames;
 
