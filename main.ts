@@ -3,6 +3,7 @@ import { Plugin, WorkspaceLeaf, ItemView, App, TFile, PluginSettingTab, Setting,
 export default class DynamicTimetable extends Plugin {
     settings: DynamicTimetableSettings;
     view: TimetableView | null = null;
+    public targetFile: TFile;
 
     private static DEFAULT_SETTINGS: DynamicTimetableSettings = {
         filePath: null,
@@ -31,6 +32,15 @@ export default class DynamicTimetable extends Plugin {
     }
 
     showTimetable() {
+        this.targetFile = this.settings.filePath
+            ? this.app.vault.getAbstractFileByPath(this.settings.filePath) as TFile
+            : this.app.workspace.getActiveFile() as TFile ?? null;
+
+        if (!this.targetFile) {
+            new Notice("No active file or active file is not a Markdown file");
+            return;
+        }
+
         const leaf = this.app.workspace.getRightLeaf(false);
         leaf.setViewState({ type: "Timetable" });
         this.app.workspace.revealLeaf(leaf);
@@ -48,7 +58,7 @@ export default class DynamicTimetable extends Plugin {
     private registerModifyEventHandler() {
         this.registerEvent(
             this.app.vault.on("modify", (file) => {
-                if (file === this.app.workspace.getActiveFile() && this.view) {
+                if (file === this.targetFile && this.view) {
                     this.view.update();
                 }
             })
@@ -61,11 +71,6 @@ export default class DynamicTimetable extends Plugin {
     async saveDataToSettings() {
         await this.saveData(this.settings);
     }
-}
-
-interface TimetableView extends ItemView {
-    containerEl: HTMLDivElement;
-    update(): Promise<void>;
 }
 
 class TimetableView extends ItemView {
@@ -90,26 +95,10 @@ class TimetableView extends ItemView {
         // Do nothing
     }
 
-    async update(): Promise<void> {
-        const content = await this.getContent();
+    async update() {
+        const content = await this.app.vault.read(this.plugin.targetFile);
         const tasks = this.parseTasksFromContent(content);
         this.renderTable(tasks);
-    }
-
-    async getContent(): Promise<string> {
-        let file: TFile;
-
-        if (this.plugin.settings.filePath) {
-            file = this.app.vault.getAbstractFileByPath(this.plugin.settings.filePath) as TFile;
-        } else {
-            file = this.app.workspace.getActiveFile() as TFile;
-        }
-
-        if (!file || !(file instanceof TFile)) {
-            this.plugin.hideTimetable();
-            new Notice("No active file or active file is not a Markdown file");
-        }
-        return await this.app.vault.cachedRead(file);
     }
 
     parseTasksFromContent(content: string): string[] {
