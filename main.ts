@@ -3,7 +3,7 @@ import { Plugin, WorkspaceLeaf, ItemView, App, TFile, PluginSettingTab, Setting,
 export default class DynamicTimetable extends Plugin {
     settings: DynamicTimetableSettings;
     view: TimetableView | null = null;
-    public targetFile: TFile;
+    targetFile: TFile | null = null;
 
     private static DEFAULT_SETTINGS: DynamicTimetableSettings = {
         filePath: null,
@@ -15,7 +15,8 @@ export default class DynamicTimetable extends Plugin {
     async onload() {
         console.log("DynamicTimetable: onload");
 
-        await this.loadDataFromSettings();
+        this.settings = { ...DynamicTimetable.DEFAULT_SETTINGS, ...await this.loadData() };
+        this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
 
         this.addCommand({
             id: "toggle-timetable",
@@ -23,54 +24,45 @@ export default class DynamicTimetable extends Plugin {
             callback: this.toggleTimetable.bind(this)
         });
 
-        this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
+        this.registerEvent(this.app.vault.on("modify", (file) => {
+            if (file === this.targetFile && this.view) {
+                this.view.update();
+            }
+        }));
     }
 
     toggleTimetable() {
         const leaves = this.app.workspace.getLeavesOfType("Timetable");
-        leaves.length > 0 ? this.hideTimetable() : this.showTimetable();
+        if (leaves.length == 0) {
+            this.openTimetable();
+        } else {
+            this.closeTimetable();
+        }
     }
 
-    showTimetable() {
-        this.targetFile = this.settings.filePath
-            ? this.app.vault.getAbstractFileByPath(this.settings.filePath) as TFile
-            : this.app.workspace.getActiveFile() as TFile ?? null;
-
-        if (!this.targetFile) {
-            new Notice("No active file or active file is not a Markdown file");
-            return;
-        }
-
+    async openTimetable() {
+        this.checkTargetFile();
         const leaf = this.app.workspace.getRightLeaf(false);
         leaf.setViewState({ type: "Timetable" });
         this.app.workspace.revealLeaf(leaf);
-        if (!this.view) {
-            this.view = new TimetableView(leaf, this);
-            this.registerView("Timetable", () => this.view!);
-            this.registerModifyEventHandler();
-        }
+        this.view = new TimetableView(leaf, this);
+        this.registerView("Timetable", () => this.view!);
     }
 
-    hideTimetable() {
+    closeTimetable() {
         this.app.workspace.detachLeavesOfType("Timetable");
     }
 
-    private registerModifyEventHandler() {
-        this.registerEvent(
-            this.app.vault.on("modify", (file) => {
-                if (file === this.targetFile && this.view) {
-                    this.view.update();
-                }
-            })
-        );
+    checkTargetFile() {
+        this.targetFile = this.settings.filePath
+            ? this.app.vault.getAbstractFileByPath(this.settings.filePath) as TFile
+            : this.app.workspace.getActiveFile() as TFile | null;
+
+        if (!this.targetFile) {
+            new Notice("No active file or active file is not a Markdown file");
+        }
     }
 
-    private async loadDataFromSettings() {
-        this.settings = Object.assign({}, DynamicTimetable.DEFAULT_SETTINGS, this.loadData());
-    }
-    async saveDataToSettings() {
-        await this.saveData(this.settings);
-    }
 }
 
 class TimetableView extends ItemView {
@@ -96,7 +88,10 @@ class TimetableView extends ItemView {
     }
 
     async update() {
-        const content = await this.app.vault.read(this.plugin.targetFile);
+        if (!this.plugin.targetFile) {
+            return;
+        }
+        const content = await this.app.vault.cachedRead(this.plugin.targetFile);
         const tasks = this.parseTasksFromContent(content);
         this.renderTable(tasks);
     }
@@ -110,12 +105,18 @@ class TimetableView extends ItemView {
             .filter(task => task.includes(separator))
             .map(task => {
                 const [taskName, timeEstimate] = task.replace(/^\- \[\] /, '').split(separator);
-                const parsedTaskName = taskName.replace(/^-\s*\[\s*.\s*\]\s*/, "").replace(/\[\[|\]\]/g, "").trim();
+                const parsedTaskName = this.parseTaskName(taskName);
                 const parsedTimeEstimate = timeEstimate ? timeEstimate.trim() : '';
                 return `${parsedTaskName}${separator}${parsedTimeEstimate}`;
             });
 
         return tasks;
+    }
+
+    parseTaskName(taskName: string): string {
+        const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
+        const linkRegex = /\[\[|\]\]/g;
+        return taskName.replace(taskNameRegex, "").replace(linkRegex, "").trim();
     }
 
     async renderTable(tasks: string[]): Promise<void> {
@@ -138,12 +139,6 @@ class TimetableView extends ItemView {
                 row.appendChild(createTableCell(value, isHeader));
             });
             return row;
-        }
-
-        function parseTaskName(taskName: string): string {
-            const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
-            const linkRegex = /\[\[|\]\]/g;
-            return taskName.replace(taskNameRegex, "").replace(linkRegex, "").trim();
         }
 
         function formatTime(date: Date): string {
@@ -169,7 +164,7 @@ class TimetableView extends ItemView {
 
         for (let task of tasks) {
             const [taskName, timeEstimate] = task.split(taskEstimateDelimiter);
-            const parsedTaskName = parseTaskName(taskName);
+            const parsedTaskName = this.parseTaskName(taskName);
             const minutes = parseInt(timeEstimate);
             const endTime = new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE);
             const endTimeStr = formatTime(endTime);
@@ -209,8 +204,12 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         newValue: DynamicTimetableSettings[T]
     ): Promise<void> {
         this.plugin.settings[settingName] = newValue;
-        await this.plugin.saveDataToSettings();
+        await this.saveDataToSettings();
         this.plugin.view?.update();
+    }
+
+    async saveDataToSettings() {
+        await this.plugin.saveData(this.plugin.settings);
     }
 
     private createFilePathSetting(): Setting {
