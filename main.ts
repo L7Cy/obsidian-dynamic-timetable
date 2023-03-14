@@ -179,6 +179,10 @@ class TimetableView extends ItemView {
             currentTime = endTime;
         }
 
+        const updateButton = contentEl.createEl("button", { text: "Update" });
+        updateButton.addEventListener("click", async () => {
+            await this.update();
+        });
         contentEl.appendChild(scheduleTable);
     }
 }
