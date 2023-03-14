@@ -182,6 +182,7 @@ class TimetableView extends ItemView {
         const updateButton = contentEl.createEl("button", { text: "Update" });
         updateButton.addEventListener("click", async () => {
             await this.update();
+            new Notice("Timetable updated!");
         });
         contentEl.appendChild(scheduleTable);
     }
