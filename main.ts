@@ -115,10 +115,14 @@ class TimetableView extends ItemView {
 
     parseTaskName(taskName: string): string {
         const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
-        const linkRegex = /\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g;
-        const strippedTaskName = taskName.replace(taskNameRegex, "");
-        const parsedTaskName = strippedTaskName.replace(linkRegex, "$1").trim();
-        return parsedTaskName;
+        const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
+        const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
+
+        let parsedTaskName = taskName.replace(taskNameRegex, "").trim();
+        parsedTaskName = parsedTaskName.replace(linkRegex, "$2");
+        parsedTaskName = parsedTaskName.replace(markdownLinkRegex, "$1");
+
+        return parsedTaskName.trim();
     }
 
     async renderTable(tasks: string[]): Promise<void> {
