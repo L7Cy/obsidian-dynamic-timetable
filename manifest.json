@@ -5,7 +5,6 @@
 	"minAppVersion": "1.1.16",
 	"description": "Calculate the estimated time of completion from the estimated time of the task and dynamically create a timetable.",
 	"author": "L7Cy",
-	"authorUrl": "",
-	"fundingUrl": "",
+	"authorUrl": "https://github.com/L7Cy",
 	"isDesktopOnly": false
 }
