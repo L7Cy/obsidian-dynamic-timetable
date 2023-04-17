@@ -1,9 +1,16 @@
 import { Plugin, WorkspaceLeaf, ItemView, App, TFile, PluginSettingTab, Setting, Notice } from "obsidian";
 
+interface Task {
+    task: string;
+    startTime: Date | null;
+    estimate: string | null;
+}
+
 interface DynamicTimetableSettings {
     filePath: string | null;
     showEstimate: boolean;
     taskEstimateDelimiter: string;
+    startTimeDelimiter: string;
     headerNames: string[];
     [key: string]: string | boolean | string[] | null | undefined;
 }
@@ -17,6 +24,7 @@ export default class DynamicTimetable extends Plugin {
         filePath: null,
         showEstimate: false,
         taskEstimateDelimiter: ';',
+        startTimeDelimiter: '@',
         headerNames: ['tasks', 'estimate', 'end'],
     };
 
@@ -84,7 +92,7 @@ class TimetableView extends ItemView {
     constructor(leaf: WorkspaceLeaf, private readonly plugin: DynamicTimetable) {
         super(leaf);
         this.containerEl.addClass("Timetable");
-        this.taskParser = TaskParser.fromSettings(plugin.settings);
+        this.taskParser = TaskParser.fromSettings(this.plugin, this.plugin.settings);
     }
 
     getViewType(): string {
@@ -109,15 +117,15 @@ class TimetableView extends ItemView {
         }
         const content = await this.app.vault.cachedRead(this.plugin.targetFile);
         const tasks = this.parseTasksFromContent(content);
-        this.renderTable(tasks);
+        await this.renderTable(tasks);
     }
 
-    parseTasksFromContent(content: string): string[] {
+    parseTasksFromContent(content: string): Task[] {
         const tasks = this.taskParser.filterAndParseTasks(content);
         return tasks;
     }
 
-    async renderTable(tasks: string[]): Promise<void> {
+    async renderTable(tasks: Task[]): Promise<void> {
         const { contentEl } = this;
         contentEl.empty();
 
@@ -149,31 +157,48 @@ class TimetableView extends ItemView {
         return this.createTableRow(tableHeaderValues, true);
     }
 
-    private appendTableBodyRows(tableBody: HTMLTableSectionElement, tasks: string[]): void {
+    private appendTableBodyRows(tableBody: HTMLTableSectionElement, tasks: Task[]): void {
         const { showEstimate, taskEstimateDelimiter } = this.plugin.settings;
         const MILLISECONDS_IN_MINUTE = 60000;
 
         let currentTime = new Date();
+        let previousEndTime: Date | null = null;
+
         for (let task of tasks) {
-            const [taskName, timeEstimate] = task.split(taskEstimateDelimiter);
-            const parsedTaskName = this.taskParser.parseTaskName(taskName);
-            const minutes = parseInt(timeEstimate);
-            const endTime = new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE);
-            const endTimeStr = this.formatTime(endTime);
+            const { task: parsedTaskName, startTime, estimate } = task;
+            const minutes = estimate ? parseInt(estimate) : null;
+            const endTime = minutes ? new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE) : null;
+
+            let backgroundColor: string | null = null;
+            if (startTime) {
+                if (previousEndTime && new Date(startTime) < previousEndTime) {
+                    backgroundColor = "rgba(255, 0, 0, 0.3)";
+                } else {
+                    backgroundColor = "rgba(0, 255, 0, 0.3)";
+                }
+            }
 
             const tableRowValues = [parsedTaskName];
-            if (showEstimate) {
-                tableRowValues.push(`${timeEstimate}m`);
+            if (showEstimate && estimate) {
+                tableRowValues.push(`${estimate}m`);
             }
-            tableRowValues.push(endTimeStr);
-            tableBody.appendChild(this.createTableRow(tableRowValues));
+            if (endTime) {
+                tableRowValues.push(this.formatTime(endTime));
+            }
+            tableBody.appendChild(this.createTableRow(tableRowValues, false, backgroundColor));
 
-            currentTime = endTime;
+            if (endTime) {
+                previousEndTime = endTime;
+                currentTime = endTime;
+            }
         }
     }
 
-    private createTableRow(rowValues: string[], isHeader = false): HTMLTableRowElement {
+    private createTableRow(rowValues: string[], isHeader = false, backgroundColor: string | null = null): HTMLTableRowElement {
         const row = document.createElement("tr");
+        if (backgroundColor) {
+            row.setAttribute("style", `background-color: ${backgroundColor};`);
+        }
         rowValues.forEach((value) => {
             const cell = document.createElement(isHeader ? "th" : "td");
             cell.textContent = value;
@@ -197,36 +222,61 @@ class TimetableView extends ItemView {
 }
 
 class TaskParser {
-    constructor(private separator: string) { }
+    constructor(private plugin: DynamicTimetable, private separator: string, private startTimeDelimiter: string) { }
 
-    static fromSettings(settings: DynamicTimetableSettings): TaskParser {
-        return new TaskParser(settings.taskEstimateDelimiter);
+    static fromSettings(plugin: DynamicTimetable, settings: DynamicTimetableSettings): TaskParser {
+        return new TaskParser(plugin, settings.taskEstimateDelimiter, settings.startTimeDelimiter);
     }
 
-    public filterAndParseTasks(content: string): string[] {
-        return content.split("\n")
+    public filterAndParseTasks(content: string): Task[] {
+        const tasks = content.split("\n")
             .map(line => line.trim())
             .filter(line => line.startsWith("- [ ]"))
-            .filter(task => task.includes(this.separator))
+            .filter(task => task.includes(this.separator) || task.includes(this.startTimeDelimiter))
             .map(task => {
-                const [taskName, timeEstimate] = task.replace(/^\- \[\] /, '').split(this.separator);
-                const parsedTaskName = this.parseTaskName(taskName);
-                const parsedTimeEstimate = timeEstimate ? timeEstimate.trim() : '';
-                return `${parsedTaskName}${this.separator}${parsedTimeEstimate}`;
+                const taskName = this.parseTaskName(task);
+                const startTime = this.parseStartTime(task);
+                const estimate = this.parseEstimate(task);
+                return {
+                    task: taskName,
+                    startTime: startTime,
+                    estimate: estimate
+                };
             });
+        return tasks;
+    }
+
+    public parseEstimate(task: string): string | null {
+        const regex = new RegExp(`\\${this.separator}\\s*(\\d+)\\s*`);
+        const match = task.match(regex);
+        return match ? match[1] : null;
     }
 
     public parseTaskName(taskName: string): string {
         const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
         const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
         const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
+        const estimateAndStartTimeRegex = new RegExp(`(\\${this.separator}\\s*\\d+\\s*|\\${this.startTimeDelimiter}\\s*\\d{1,2}:\\d{2})`, 'g');
 
         return taskName
             .replace(taskNameRegex, "")
             .trim()
             .replace(linkRegex, "$2")
             .replace(markdownLinkRegex, "$1")
+            .replace(estimateAndStartTimeRegex, "")
             .trim();
+    }
+
+    public parseStartTime(task: string): Date | null {
+        const regex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:\\d{2})`);
+        const match = task.match(regex);
+        if (match) {
+            const currentTime = new Date();
+            const [hours, minutes] = match[1].split(":").map(Number);
+            const startDate = new Date(currentTime.setHours(hours, minutes));
+            return startDate;
+        }
+        return null;
     }
 }
 
@@ -244,6 +294,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         this.createFilePathSetting();
         this.createShowEstimateSetting();
         this.createTaskEstimateDelimiterSetting();
+        this.createStartTimeDelimiterSetting();
         this.plugin.settings.headerNames.forEach((headerName, index) => {
             this.createHeaderNameSetting(headerName, index);
         });
@@ -300,6 +351,27 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             });
 
         return taskEstimateDelimiterSetting;
+    }
+
+    private createStartTimeDelimiterSetting(): Setting {
+        const startTimeDelimiterSetting = new Setting(this.containerEl)
+            .setName("Start Time Delimiter")
+            .setDesc("Enter the delimiter to use between the task name and start time")
+            .addText((text) => {
+                const el = text
+                    .setPlaceholder("@")
+                    .setValue(this.plugin.settings.startTimeDelimiter);
+                el.inputEl.addEventListener("change", async (ev) => {
+                    if (!(ev.target instanceof HTMLInputElement)) {
+                        return;
+                    }
+                    const value = ev.target.value.trim();
+                    await this.updateSetting("startTimeDelimiter", value);
+                });
+                return el;
+            });
+
+        return startTimeDelimiterSetting;
     }
 
     private createHeaderNameSetting(headerName: string, index: number): Setting {
