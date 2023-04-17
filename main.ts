@@ -16,7 +16,7 @@ export default class DynamicTimetable extends Plugin {
     private static DEFAULT_SETTINGS: DynamicTimetableSettings = {
         filePath: null,
         showEstimate: false,
-        taskEstimateDelimiter: ':',
+        taskEstimateDelimiter: ';',
         headerNames: ['tasks', 'estimate', 'end'],
     };
 
@@ -287,7 +287,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             .setDesc("Enter the delimiter to use between the task name and estimate")
             .addText((text) => {
                 const el = text
-                    .setPlaceholder(":")
+                    .setPlaceholder(";")
                     .setValue(this.plugin.settings.taskEstimateDelimiter);
                 el.inputEl.addEventListener("change", async (ev) => {
                     if (!(ev.target instanceof HTMLInputElement)) {
