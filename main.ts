@@ -25,7 +25,7 @@ export default class DynamicTimetable extends Plugin {
         showEstimate: false,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
-        headerNames: ['tasks', 'estimate', 'end'],
+        headerNames: ['Tasks', 'Estimate', 'End'],
     };
 
     async onload() {
