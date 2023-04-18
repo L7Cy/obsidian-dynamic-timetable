@@ -83,7 +83,6 @@ export default class DynamicTimetable extends Plugin {
             new Notice("No active file or active file is not a Markdown file");
         }
     }
-
 }
 
 class TimetableView extends ItemView {
@@ -92,7 +91,7 @@ class TimetableView extends ItemView {
     constructor(leaf: WorkspaceLeaf, private readonly plugin: DynamicTimetable) {
         super(leaf);
         this.containerEl.addClass("Timetable");
-        this.taskParser = TaskParser.fromSettings(this.plugin, this.plugin.settings);
+        this.taskParser = TaskParser.fromSettings(this.plugin.settings);
     }
 
     getViewType(): string {
@@ -158,7 +157,7 @@ class TimetableView extends ItemView {
     }
 
     private appendTableBodyRows(tableBody: HTMLTableSectionElement, tasks: Task[]): void {
-        const { showEstimate, taskEstimateDelimiter } = this.plugin.settings;
+        const { showEstimate } = this.plugin.settings;
         const MILLISECONDS_IN_MINUTE = 60000;
 
         let currentTime = new Date();
@@ -222,10 +221,10 @@ class TimetableView extends ItemView {
 }
 
 class TaskParser {
-    constructor(private plugin: DynamicTimetable, private separator: string, private startTimeDelimiter: string) { }
+    constructor(private separator: string, private startTimeDelimiter: string) { }
 
-    static fromSettings(plugin: DynamicTimetable, settings: DynamicTimetableSettings): TaskParser {
-        return new TaskParser(plugin, settings.taskEstimateDelimiter, settings.startTimeDelimiter);
+    static fromSettings(settings: DynamicTimetableSettings): TaskParser {
+        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter);
     }
 
     public filterAndParseTasks(content: string): Task[] {
@@ -269,13 +268,11 @@ class TaskParser {
         const dateTimeMatch = task.match(dateTimeRegex);
 
         if (dateTimeMatch) {
-            // Parse "yyyy-MM-ddThh:mm" format
             const parsedDateTime = new Date(dateTimeMatch[1]);
             if (!isNaN(parsedDateTime.getTime())) {
                 return parsedDateTime;
             }
         } else if (timeMatch) {
-            // Parse "hh:mm" format
             const currentTime = new Date();
             const [hours, minutes] = timeMatch[1].split(":").map(Number);
             const startDate = new Date(currentTime.setHours(hours, minutes));
