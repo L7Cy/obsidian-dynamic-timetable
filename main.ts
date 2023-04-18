@@ -9,6 +9,7 @@ interface Task {
 interface DynamicTimetableSettings {
     filePath: string | null;
     showEstimate: boolean;
+    showStartTime: boolean;
     taskEstimateDelimiter: string;
     startTimeDelimiter: string;
     headerNames: string[];
@@ -23,9 +24,10 @@ export default class DynamicTimetable extends Plugin {
     private static DEFAULT_SETTINGS: DynamicTimetableSettings = {
         filePath: null,
         showEstimate: false,
+        showStartTime: false,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
-        headerNames: ['Tasks', 'Estimate', 'End'],
+        headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     };
 
     async onload() {
@@ -145,19 +147,22 @@ class TimetableView extends ItemView {
     }
 
     private createTableHeader(): HTMLTableRowElement {
-        const { headerNames, showEstimate } = this.plugin.settings;
-        const [taskHeaderName, estimateHeaderName, endHeaderName] = headerNames;
+        const { headerNames, showEstimate, showStartTime } = this.plugin.settings;
+        const [taskHeaderName, estimateHeaderName, startTimeHeaderName, endHeaderName] = headerNames;
 
         const tableHeaderValues = [taskHeaderName];
         if (showEstimate) {
             tableHeaderValues.push(estimateHeaderName);
+        }
+        if (showStartTime) {
+            tableHeaderValues.push(startTimeHeaderName);
         }
         tableHeaderValues.push(endHeaderName);
         return this.createTableRow(tableHeaderValues, true);
     }
 
     private appendTableBodyRows(tableBody: HTMLTableSectionElement, tasks: Task[]): void {
-        const { showEstimate } = this.plugin.settings;
+        const { showEstimate, showStartTime } = this.plugin.settings;
         const MILLISECONDS_IN_MINUTE = 60000;
 
         let currentTime = new Date();
@@ -168,7 +173,10 @@ class TimetableView extends ItemView {
             const minutes = estimate ? parseInt(estimate) : null;
             if (startTime) {
                 currentTime = new Date(startTime);
+            } else if (previousEndTime) {
+                currentTime = previousEndTime;
             }
+
             const endTime = minutes ? new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE) : null;
 
             let backgroundColor: string | null = null;
@@ -183,6 +191,9 @@ class TimetableView extends ItemView {
             const tableRowValues = [parsedTaskName];
             if (showEstimate && estimate) {
                 tableRowValues.push(`${estimate}m`);
+            }
+            if (showStartTime) {
+                tableRowValues.push(this.formatTime(currentTime));
             }
             if (endTime) {
                 tableRowValues.push(this.formatTime(endTime));
@@ -305,6 +316,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
 
         this.createFilePathSetting();
         this.createShowEstimateSetting();
+        this.createShowStartTimeSetting();
         this.createTaskEstimateDelimiterSetting();
         this.createStartTimeDelimiterSetting();
         this.plugin.settings.headerNames.forEach((headerName, index) => {
@@ -342,6 +354,21 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             );
 
         return showEstimateSetting;
+    }
+
+    private createShowStartTimeSetting(): Setting {
+        const showStartTimeSetting = new Setting(this.containerEl)
+            .setName("Show Start Time Column")
+            .setDesc("Show/hide the start time column")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.showStartTime)
+                    .onChange(async (value) => {
+                        await this.updateSetting("showStartTime", value);
+                    })
+            );
+
+        return showStartTimeSetting;
     }
 
     private createTaskEstimateDelimiterSetting(): Setting {
