@@ -21,7 +21,7 @@ export default class DynamicTimetable extends Plugin {
     view: TimetableView | null = null;
     targetFile: TFile | null = null;
 
-    private static DEFAULT_SETTINGS: DynamicTimetableSettings = {
+    static DEFAULT_SETTINGS: DynamicTimetableSettings = {
         filePath: null,
         showEstimate: false,
         showStartTime: false,
@@ -319,7 +319,10 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         this.createShowStartTimeSetting();
         this.createTaskEstimateDelimiterSetting();
         this.createStartTimeDelimiterSetting();
-        this.plugin.settings.headerNames.forEach((headerName, index) => {
+
+        const defaultHeaderNames = DynamicTimetable.DEFAULT_SETTINGS.headerNames;
+        defaultHeaderNames.forEach((defaultHeaderName, index) => {
+            const headerName = this.plugin.settings.headerNames[index] || defaultHeaderName;
             this.createHeaderNameSetting(headerName, index);
         });
     }
