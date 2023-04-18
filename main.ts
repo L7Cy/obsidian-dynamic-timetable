@@ -166,6 +166,9 @@ class TimetableView extends ItemView {
         for (let task of tasks) {
             const { task: parsedTaskName, startTime, estimate } = task;
             const minutes = estimate ? parseInt(estimate) : null;
+            if (startTime) {
+                currentTime = new Date(startTime);
+            }
             const endTime = minutes ? new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE) : null;
 
             let backgroundColor: string | null = null;
