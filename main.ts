@@ -246,12 +246,6 @@ class TaskParser {
         return tasks;
     }
 
-    public parseEstimate(task: string): string | null {
-        const regex = new RegExp(`\\${this.separator}\\s*(\\d+)\\s*`);
-        const match = task.match(regex);
-        return match ? match[1] : null;
-    }
-
     public parseTaskName(taskName: string): string {
         const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
         const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
@@ -277,6 +271,12 @@ class TaskParser {
             return startDate;
         }
         return null;
+    }
+
+    public parseEstimate(task: string): string | null {
+        const regex = new RegExp(`\\${this.separator}\\s*(\\d+)\\s*`);
+        const match = task.match(regex);
+        return match ? match[1] : null;
     }
 }
 
