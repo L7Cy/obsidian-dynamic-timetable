@@ -1,5 +1,5 @@
 {
-	"name": "Dynamic Timetable",
+	"name": "Dynamic-Timetable",
 	"version": "1.2.0",
 	"description": "Calculate the estimated time of completion from the estimated time of the task and dynamically create a timetable.",
 	"main": "main.js",
