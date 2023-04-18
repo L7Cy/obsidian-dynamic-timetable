@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "Dynamic Timetable",
+	"version": "1.2.0",
+	"description": "Calculate the estimated time of completion from the estimated time of the task and dynamically create a timetable.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
