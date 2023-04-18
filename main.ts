@@ -10,6 +10,8 @@ interface DynamicTimetableSettings {
     filePath: string | null;
     showEstimate: boolean;
     showStartTime: boolean;
+    showEstimateInTaskName: boolean;
+    showStartTimeInTaskName: boolean;
     taskEstimateDelimiter: string;
     startTimeDelimiter: string;
     headerNames: string[];
@@ -25,6 +27,8 @@ export default class DynamicTimetable extends Plugin {
         filePath: null,
         showEstimate: false,
         showStartTime: false,
+        showEstimateInTaskName: false,
+        showStartTimeInTaskName: false,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
@@ -235,10 +239,10 @@ class TimetableView extends ItemView {
 }
 
 class TaskParser {
-    constructor(private separator: string, private startTimeDelimiter: string) { }
+    constructor(private separator: string, private startTimeDelimiter: string, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) { }
 
     static fromSettings(settings: DynamicTimetableSettings): TaskParser {
-        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter);
+        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter, settings.showStartTimeInTaskName, settings.showEstimateInTaskName);
     }
 
     public filterAndParseTasks(content: string): Task[] {
@@ -263,15 +267,28 @@ class TaskParser {
         const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
         const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
         const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
-        const estimateAndStartTimeRegex = new RegExp(`(\\${this.separator}\\s*\\d+\\s*|\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?\\d{1,2}:\\d{2})`, 'g');
 
-        return taskName
+        taskName = taskName
             .replace(taskNameRegex, "")
             .trim()
             .replace(linkRegex, "$2")
             .replace(markdownLinkRegex, "$1")
-            .replace(estimateAndStartTimeRegex, "")
             .trim();
+
+        const startTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:\\d{2})`);
+
+        if (this.showStartTimeInTaskName) {
+            taskName = taskName.replace(startTimeRegex, (match, p1) => `${this.startTimeDelimiter}${p1}`);
+        } else {
+            taskName = taskName.replace(startTimeRegex, "").trim();
+        }
+
+        if (!this.showEstimateInTaskName) {
+            const estimateRegex = new RegExp(`\\${this.separator}\\s*\\d+\\s*`);
+            taskName = taskName.replace(estimateRegex, "").trim();
+        }
+
+        return taskName;
     }
 
     public parseStartTime(task: string): Date | null {
@@ -317,6 +334,8 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         this.createFilePathSetting();
         this.createShowEstimateSetting();
         this.createShowStartTimeSetting();
+        this.createShowEstimateInTaskNameSetting();
+        this.createShowStartTimeInTaskNameSetting();
         this.createTaskEstimateDelimiterSetting();
         this.createStartTimeDelimiterSetting();
 
@@ -372,6 +391,34 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             );
 
         return showStartTimeSetting;
+    }
+
+    private createShowEstimateInTaskNameSetting(): Setting {
+        const showEstimateInTaskNameSetting = new Setting(this.containerEl)
+            .setName("Show estimate in task name")
+            .setDesc("Include estimate time with the delimiter in the task name")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showEstimateInTaskName).onChange(async (value) => {
+                    this.plugin.settings.showEstimateInTaskName = value;
+                    await this.updateSetting("showEstimateInTaskName", value);
+                })
+            );
+
+        return showEstimateInTaskNameSetting;
+    }
+
+    private createShowStartTimeInTaskNameSetting(): Setting {
+        const showStartInTaskNameSetting = new Setting(this.containerEl)
+            .setName("Show start time in task name")
+            .setDesc("Include start time with the delimiter in the task name")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.showStartTimeInTaskName).onChange(async (value) => {
+                    this.plugin.settings.showStartTimeInTaskName = value;
+                    await this.updateSetting("showStartInTaskName", value);
+                })
+            );
+
+        return showStartInTaskNameSetting;
     }
 
     private createTaskEstimateDelimiterSetting(): Setting {
