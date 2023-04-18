@@ -47,7 +47,7 @@ The character used to separate the task name and time estimate (default: ";").
 ### Start Time Delimiter
 The character used to separate the task name and start time (default: "@").
 ### Header Names
-The names of the columns in the task list table (default: tasks, estimate, end).
+The names of the columns in the task list table (default: Tasks, Estimate, End).
 
 ## License
 This software is released under the [MIT License](https://opensource.org/license/mit/).
