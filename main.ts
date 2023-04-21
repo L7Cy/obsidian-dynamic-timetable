@@ -84,11 +84,14 @@ export default class DynamicTimetable extends Plugin {
     }
 
     checkTargetFile() {
-        this.targetFile = this.settings.filePath
-            ? this.app.vault.getAbstractFileByPath(this.settings.filePath) as TFile
-            : this.app.workspace.getActiveFile() as TFile | null;
+        const abstractFile = this.settings.filePath
+            ? this.app.vault.getAbstractFileByPath(this.settings.filePath)
+            : this.app.workspace.getActiveFile();
 
-        if (!this.targetFile) {
+        if (abstractFile instanceof TFile) {
+            this.targetFile = abstractFile;
+        } else {
+            this.targetFile = null;
             new Notice("No active file or active file is not a Markdown file");
         }
     }
