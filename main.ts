@@ -50,7 +50,7 @@ export default class DynamicTimetable extends Plugin {
             name: "Show/Hide Timetable",
             callback: () => {
                 const leaves = this.app.workspace.getLeavesOfType("Timetable");
-                if (leaves.length == 0) {
+                if (leaves.length === 0) {
                     this.openTimetable();
                 } else {
                     this.closeTimetable();
