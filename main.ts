@@ -496,7 +496,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         for (let leaf of this.plugin.app.workspace.getLeavesOfType("Timetable")) {
             let view = leaf.view;
             if (view instanceof TimetableView) {
-                view.update();
+                await view.update();
             }
         }
     }
