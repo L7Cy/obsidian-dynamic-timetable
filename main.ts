@@ -20,7 +20,6 @@ interface DynamicTimetableSettings {
 
 export default class DynamicTimetable extends Plugin {
     settings: DynamicTimetableSettings;
-    view: TimetableView | null = null;
     targetFile: TFile | null = null;
 
     static DEFAULT_SETTINGS: DynamicTimetableSettings = {
@@ -42,6 +41,7 @@ export default class DynamicTimetable extends Plugin {
 
         this.addToggleTimetableCommand();
         this.registerModifyEvent();
+        this.registerView("Timetable", (leaf: WorkspaceLeaf) => new TimetableView(leaf, this));
     }
 
     private addToggleTimetableCommand(): void {
@@ -50,7 +50,7 @@ export default class DynamicTimetable extends Plugin {
             name: "Show/Hide Timetable",
             callback: () => {
                 const leaves = this.app.workspace.getLeavesOfType("Timetable");
-                if (leaves.length === 0) {
+                if (leaves.length == 0) {
                     this.openTimetable();
                 } else {
                     this.closeTimetable();
@@ -61,8 +61,13 @@ export default class DynamicTimetable extends Plugin {
 
     private registerModifyEvent(): void {
         this.registerEvent(this.app.vault.on("modify", async (file) => {
-            if (file === this.targetFile && this.view) {
-                await this.view.update();
+            if (file === this.targetFile) {
+                for (let leaf of this.app.workspace.getLeavesOfType("Timetable")) {
+                    let view = leaf.view;
+                    if (view instanceof TimetableView) {
+                        await view.update();
+                    }
+                }
             }
         }));
     }
@@ -72,8 +77,6 @@ export default class DynamicTimetable extends Plugin {
         const leaf = this.app.workspace.getRightLeaf(false);
         leaf.setViewState({ type: "Timetable" });
         this.app.workspace.revealLeaf(leaf);
-        this.view = new TimetableView(leaf, this);
-        this.registerView("Timetable", () => this.view!);
     }
 
     closeTimetable() {
@@ -494,6 +497,12 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     ): Promise<void> {
         this.plugin.settings[settingName] = newValue;
         await this.plugin.saveData(this.plugin.settings);
-        this.plugin.view?.update();
+
+        for (let leaf of this.plugin.app.workspace.getLeavesOfType("Timetable")) {
+            let view = leaf.view;
+            if (view instanceof TimetableView) {
+                view.update();
+            }
+        }
     }
 }
