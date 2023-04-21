@@ -40,7 +40,6 @@ export default class DynamicTimetable extends Plugin {
         this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
 
         this.addToggleTimetableCommand();
-        this.registerModifyEvent();
         this.registerView("Timetable", (leaf: WorkspaceLeaf) => new TimetableView(leaf, this));
     }
 
@@ -57,19 +56,6 @@ export default class DynamicTimetable extends Plugin {
                 }
             }
         });
-    }
-
-    private registerModifyEvent(): void {
-        this.registerEvent(this.app.vault.on("modify", async (file) => {
-            if (file === this.targetFile) {
-                for (let leaf of this.app.workspace.getLeavesOfType("Timetable")) {
-                    let view = leaf.view;
-                    if (view instanceof TimetableView) {
-                        await view.update();
-                    }
-                }
-            }
-        }));
     }
 
     async openTimetable() {
@@ -104,6 +90,12 @@ class TimetableView extends ItemView {
         super(leaf);
         this.containerEl.addClass("Timetable");
         this.taskParser = TaskParser.fromSettings(this.plugin.settings);
+
+        plugin.registerEvent(this.app.vault.on("modify", async (file) => {
+            if (file === this.plugin.targetFile) {
+                this.update();
+            }
+        }));
     }
 
     getViewType(): string {
