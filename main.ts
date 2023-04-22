@@ -33,7 +33,7 @@ export default class DynamicTimetable extends Plugin {
         showEstimate: false,
         showStartTime: false,
         showEstimateInTaskName: false,
-        showStartTimeInTaskName: false,
+        showStartTimeInTaskName: true,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
