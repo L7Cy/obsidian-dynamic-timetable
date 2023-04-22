@@ -18,6 +18,12 @@ interface DynamicTimetableSettings {
     [key: string]: string | boolean | string[] | null | undefined;
 }
 
+declare module "obsidian" {
+    interface Workspace {
+        on(eventName: "layout-ready", callback: () => any, ctx?: any): EventRef;
+    }
+}
+
 export default class DynamicTimetable extends Plugin {
     settings: DynamicTimetableSettings;
     targetFile: TFile | null = null;
@@ -33,6 +39,10 @@ export default class DynamicTimetable extends Plugin {
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     };
 
+    onunload(): void {
+        this.closeTimetable();
+    }
+
     async onload() {
         console.log("DynamicTimetable: onload");
 
@@ -41,6 +51,29 @@ export default class DynamicTimetable extends Plugin {
 
         this.addToggleTimetableCommand();
         this.registerView("Timetable", (leaf: WorkspaceLeaf) => new TimetableView(leaf, this));
+
+        if (this.app.workspace.layoutReady) {
+            this.initTimetableView();
+        } else {
+            this.registerEvent(
+                this.app.workspace.on("layout-ready", this.initTimetableView.bind(this))
+            );
+        }
+    }
+
+    async initTimetableView() {
+        const leaves = this.app.workspace.getLeavesOfType("Timetable");
+        if (leaves.length == 0) {
+            this.openTimetable();
+        } else {
+            for (let leaf of leaves) {
+                let view = leaf.view;
+                if (view instanceof TimetableView) {
+                    this.checkTargetFile();
+                    await view.update();
+                }
+            }
+        }
     }
 
     private addToggleTimetableCommand(): void {
