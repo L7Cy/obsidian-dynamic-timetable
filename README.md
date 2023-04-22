@@ -5,9 +5,12 @@ Dynamic Timetable is an [Obsidian](https://obsidian.md/) plugin that dynamically
 [![Image from Gyazo](https://i.gyazo.com/807381e9ff8284f186b87dc887f01376.gif)](https://gyazo.com/807381e9ff8284f186b87dc887f01376)
 
 ## Installation
-The plugin is now officially released as a community plugin. You can install it from [here](obsidian://show-plugin?id=dynamic-timetable).
+The plugin is now officially released as a community plugin. You can install it from below.
+```
+obsidian://show-plugin?id=dynamic-timetable
+```
 
-If you want to try the beta version, install it with `L7Cy/obsidian-dynamic-timetable` using [BRAT](obsidian://show-plugin?id=obsidian42-brat).
+If you want to try the beta version, install it with `L7Cy/obsidian-dynamic-timetable` using [BRAT](https://github.com/TfTHacker/obsidian42-brat).
 
 ## Usage
 The Dynamic Timetable plugin generates task lists and time estimates from markdown files. The plugin supports the following markdown formats for tasks (including subtasks).
