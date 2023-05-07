@@ -397,7 +397,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createShowEstimateSetting(): Setting {
         const showEstimateSetting = new Setting(this.containerEl)
             .setName("Show Estimate Column")
-            .setDesc("Show/hide the estimate column")
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.showEstimate)
@@ -412,7 +411,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createShowStartTimeSetting(): Setting {
         const showStartTimeSetting = new Setting(this.containerEl)
             .setName("Show Start Time Column")
-            .setDesc("Show/hide the start time column")
             .addToggle((toggle) =>
                 toggle
                     .setValue(this.plugin.settings.showStartTime)
@@ -427,7 +425,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createShowEstimateInTaskNameSetting(): Setting {
         const showEstimateInTaskNameSetting = new Setting(this.containerEl)
             .setName("Show estimate in task name")
-            .setDesc("Include estimate time with the delimiter in the task name")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.showEstimateInTaskName).onChange(async (value) => {
                     this.plugin.settings.showEstimateInTaskName = value;
@@ -441,7 +438,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createShowStartTimeInTaskNameSetting(): Setting {
         const showStartInTaskNameSetting = new Setting(this.containerEl)
             .setName("Show start time in task name")
-            .setDesc("Include start time with the delimiter in the task name")
             .addToggle((toggle) =>
                 toggle.setValue(this.plugin.settings.showStartTimeInTaskName).onChange(async (value) => {
                     this.plugin.settings.showStartTimeInTaskName = value;
@@ -455,7 +451,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createTaskEstimateDelimiterSetting(): Setting {
         const taskEstimateDelimiterSetting = new Setting(this.containerEl)
             .setName("Task/Estimate Delimiter")
-            .setDesc("Enter the delimiter to use between the task name and estimate")
             .addText((text) => {
                 const el = text
                     .setPlaceholder(";")
@@ -476,7 +471,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createStartTimeDelimiterSetting(): Setting {
         const startTimeDelimiterSetting = new Setting(this.containerEl)
             .setName("Start Time Delimiter")
-            .setDesc("Enter the delimiter to use between the task name and start time")
             .addText((text) => {
                 const el = text
                     .setPlaceholder("@")
@@ -497,7 +491,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     private createHeaderNameSetting(headerName: string, index: number): Setting {
         const headerNameSetting = new Setting(this.containerEl)
             .setName(`Header Name ${index + 1}`)
-            .setDesc(`Enter the name of header ${index + 1}`)
             .addText((text) =>
                 text
                     .setValue(headerName)
