@@ -256,7 +256,7 @@ class TimetableView extends ItemView {
     }
 
     private formatTime(date: Date): string {
-        return new Intl.DateTimeFormat(navigator.language, { hour: "numeric", minute: "numeric" }).format(date);
+        return new Intl.DateTimeFormat(navigator.language, { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
     }
 
     private createUpdateButton(): HTMLButtonElement {
