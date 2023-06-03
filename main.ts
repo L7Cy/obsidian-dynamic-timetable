@@ -49,7 +49,7 @@ export default class DynamicTimetable extends Plugin {
         this.settings = { ...DynamicTimetable.DEFAULT_SETTINGS, ...await this.loadData() };
         this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
 
-        this.addToggleTimetableCommand();
+        this.registerCommands();
         this.registerView("Timetable", (leaf: WorkspaceLeaf) => new TimetableView(leaf, this));
 
         if (this.app.workspace.layoutReady) {
@@ -61,19 +61,9 @@ export default class DynamicTimetable extends Plugin {
         }
     }
 
-    async initTimetableView() {
-        const leaves = this.app.workspace.getLeavesOfType("Timetable");
-        if (leaves.length == 0) {
-            this.openTimetable();
-        } else {
-            for (let leaf of leaves) {
-                let view = leaf.view;
-                if (view instanceof TimetableView) {
-                    this.checkTargetFile();
-                    await view.update();
-                }
-            }
-        }
+    private registerCommands(): void {
+        this.addToggleTimetableCommand();
+        this.addInitTimetableCommand();
     }
 
     private addToggleTimetableCommand(): void {
@@ -81,14 +71,43 @@ export default class DynamicTimetable extends Plugin {
             id: "toggle-timetable",
             name: "Show/Hide Timetable",
             callback: () => {
-                const leaves = this.app.workspace.getLeavesOfType("Timetable");
-                if (leaves.length == 0) {
-                    this.openTimetable();
-                } else {
+                if (this.isTimetableOpen()) {
                     this.closeTimetable();
+                } else {
+                    this.openTimetable();
                 }
             }
         });
+    }
+
+    private addInitTimetableCommand(): void {
+        this.addCommand({
+            id: 'init-timetable',
+            name: 'Initialize Timetable',
+            callback: () => this.initTimetableView()
+        });
+    }
+
+    async initTimetableView() {
+        if (!this.isTimetableOpen()) {
+            this.openTimetable();
+        } else {
+            this.updateOpenTimetableViews();
+        }
+    }
+
+    async updateOpenTimetableViews() {
+        for (let leaf of this.app.workspace.getLeavesOfType("Timetable")) {
+            let view = leaf.view;
+            if (view instanceof TimetableView) {
+                this.checkTargetFile();
+                await view.update();
+            }
+        }
+    }
+
+    isTimetableOpen(): boolean {
+        return this.app.workspace.getLeavesOfType("Timetable").length > 0;
     }
 
     async openTimetable() {
