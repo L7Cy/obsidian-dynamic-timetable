@@ -342,8 +342,8 @@ class TaskParser {
     }
 
     public parseStartTime(task: string): Date | null {
-        const timeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:\\d{2})`);
-        const dateTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}:\\d{2})`);
+        const timeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{1,2}\\:?\\d{2})`);
+        const dateTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`);
 
         const timeMatch = task.match(timeRegex);
         const dateTimeMatch = task.match(dateTimeRegex);
@@ -355,7 +355,10 @@ class TaskParser {
             }
         } else if (timeMatch) {
             const currentTime = new Date();
-            const [hours, minutes] = timeMatch[1].split(":").map(Number);
+            const timeSplit = timeMatch[1].split(":").length == 1 ?
+                timeMatch[1].length == 3 ? [timeMatch[1].substring(0, 1), timeMatch[1].substring(1, 3)] : [timeMatch[1].substring(0, 2), timeMatch[1].substring(2, 4)] :
+                timeMatch[1].split(":");
+            const [hours, minutes] = timeSplit.map(Number);
             const startDate = new Date(currentTime.setHours(hours, minutes));
             return startDate;
         }
