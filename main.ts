@@ -12,6 +12,7 @@ interface DynamicTimetableSettings {
     showStartTime: boolean;
     showEstimateInTaskName: boolean;
     showStartTimeInTaskName: boolean;
+    showBufferTime: boolean;
     taskEstimateDelimiter: string;
     startTimeDelimiter: string;
     headerNames: string[];
@@ -34,6 +35,7 @@ export default class DynamicTimetable extends Plugin {
         showStartTime: false,
         showEstimateInTaskName: false,
         showStartTimeInTaskName: true,
+        showBufferTime: true,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
@@ -233,6 +235,20 @@ class TimetableView extends ItemView {
 
             const endTime = minutes ? new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE) : null;
 
+            if (this.plugin.settings.showBufferTime && startTime && previousEndTime) {
+                const bufferMinutes = Math.floor((new Date(startTime).getTime() - previousEndTime.getTime()) / MILLISECONDS_IN_MINUTE);
+                const bufferRow = document.createElement("tr");
+                bufferRow.setAttribute("style", `background-color: rgba(0, 0, 255, 0.3);`);
+                const bufferNameCell = document.createElement("td");
+                bufferNameCell.textContent = "Buffer Time";
+                bufferRow.appendChild(bufferNameCell);
+                const bufferTimeCell = document.createElement("td");
+                bufferTimeCell.textContent = `${bufferMinutes}m`;
+                bufferTimeCell.setAttribute("colspan", "3");
+                bufferRow.appendChild(bufferTimeCell);
+                tableBody.appendChild(bufferRow);
+            }
+
             let backgroundColor: string | null = null;
             if (startTime) {
                 if (previousEndTime && new Date(startTime) < previousEndTime) {
@@ -389,6 +405,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         this.createShowStartTimeSetting();
         this.createShowEstimateInTaskNameSetting();
         this.createShowStartTimeInTaskNameSetting();
+        this.createShowBufferTimeSetting();
         this.createTaskEstimateDelimiterSetting();
         this.createStartTimeDelimiterSetting();
 
@@ -468,6 +485,20 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             );
 
         return showStartInTaskNameSetting;
+    }
+
+    private createShowBufferTimeSetting(): Setting {
+        const showBufferTimeSetting = new Setting(this.containerEl)
+            .setName("Show Buffer Time Rows")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.showBufferTime)
+                    .onChange(async (value) => {
+                        await this.updateSetting("showBufferTime", value);
+                    })
+            );
+
+        return showBufferTimeSetting;
     }
 
     private createTaskEstimateDelimiterSetting(): Setting {
