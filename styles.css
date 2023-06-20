@@ -1,8 +1,10 @@
-/*
+.late {
+    background-color: rgba(255, 0, 0, 0.3);
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.on-time {
+    background-color: rgba(0, 255, 0, 0.3);
+}
+.buffer-time {
+    background-color: rgba(128, 128, 128, 0.3);
+}

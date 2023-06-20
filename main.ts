@@ -238,7 +238,7 @@ class TimetableView extends ItemView {
             if (this.plugin.settings.showBufferTime && startTime && previousEndTime) {
                 const bufferMinutes = Math.floor((new Date(startTime).getTime() - previousEndTime.getTime()) / MILLISECONDS_IN_MINUTE);
                 const bufferRow = document.createElement("tr");
-                bufferRow.setAttribute("style", `background-color: rgba(0, 0, 255, 0.3);`);
+                bufferRow.classList.add("buffer-time");
                 const bufferNameCell = document.createElement("td");
                 bufferNameCell.textContent = "Buffer Time";
                 bufferRow.appendChild(bufferNameCell);
@@ -249,12 +249,12 @@ class TimetableView extends ItemView {
                 tableBody.appendChild(bufferRow);
             }
 
-            let backgroundColor: string | null = null;
+            let rowClass = null;
             if (startTime) {
                 if (previousEndTime && new Date(startTime) < previousEndTime) {
-                    backgroundColor = "rgba(255, 0, 0, 0.3)";
+                    rowClass = "late";
                 } else {
-                    backgroundColor = "rgba(0, 255, 0, 0.3)";
+                    rowClass = "on-time";
                 }
             }
 
@@ -268,7 +268,7 @@ class TimetableView extends ItemView {
             if (endTime) {
                 tableRowValues.push(this.formatTime(endTime));
             }
-            tableBody.appendChild(this.createTableRow(tableRowValues, false, backgroundColor));
+            tableBody.appendChild(this.createTableRow(tableRowValues, false, rowClass));
 
             if (endTime) {
                 previousEndTime = endTime;
@@ -277,10 +277,10 @@ class TimetableView extends ItemView {
         }
     }
 
-    private createTableRow(rowValues: string[], isHeader = false, backgroundColor: string | null = null): HTMLTableRowElement {
+    private createTableRow(rowValues: string[], isHeader = false, rowClass: string | null = null): HTMLTableRowElement {
         const row = document.createElement("tr");
-        if (backgroundColor) {
-            row.setAttribute("style", `background-color: ${backgroundColor};`);
+        if (rowClass) {
+            row.classList.add(rowClass);
         }
         rowValues.forEach((value) => {
             const cell = document.createElement(isHeader ? "th" : "td");
