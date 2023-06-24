@@ -1,7 +1,7 @@
 {
 	"id": "dynamic-timetable",
 	"name": "Dynamic Timetable",
-	"version": "1.5.1",
+	"version": "1.6.0",
 	"minAppVersion": "1.2.8",
 	"description": "Calculate the estimated time of completion from the estimated time of the task and dynamically create a timetable.",
 	"author": "L7Cy",
