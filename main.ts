@@ -314,7 +314,7 @@ class TaskParser {
     public filterAndParseTasks(content: string): Task[] {
         const tasks = content.split("\n")
             .map(line => line.trim())
-            .filter(line => line.startsWith("- [ ]"))
+            .filter(line => line.startsWith("- [ ]") || line.startsWith("+ [ ]") || line.startsWith("* [ ]"))
             .filter(task => task.includes(this.separator) || task.includes(this.startTimeDelimiter))
             .map(task => {
                 const taskName = this.parseTaskName(task);
@@ -330,7 +330,7 @@ class TaskParser {
     }
 
     public parseTaskName(taskName: string): string {
-        const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
+        const taskNameRegex = /^[-+*]\s*\[\s*.\s*\]\s*/;
         const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
         const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
 
