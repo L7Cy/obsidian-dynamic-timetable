@@ -139,6 +139,7 @@ export default class DynamicTimetable extends Plugin {
 
 class TimetableView extends ItemView {
     private taskParser: TaskParser;
+    private intervalId: ReturnType<typeof setInterval> | undefined;
 
     constructor(leaf: WorkspaceLeaf, private readonly plugin: DynamicTimetable) {
         super(leaf);
@@ -174,7 +175,15 @@ class TimetableView extends ItemView {
         }
         const content = await this.app.vault.cachedRead(this.plugin.targetFile);
         const tasks = this.parseTasksFromContent(content);
+        const topTaskEstimate = tasks[0] ? (Number(tasks[0].estimate) * 60) || 0 : 0;
         await this.renderTable(tasks);
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+        }
+        this.intervalId = setInterval(() => {
+            const duration = this.plugin.targetFile ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000 : 0;
+            this.updateProgressBar(duration, topTaskEstimate);
+        }, 1000);
     }
 
     parseTasksFromContent(content: string): Task[] {
@@ -185,6 +194,9 @@ class TimetableView extends ItemView {
     async renderTable(tasks: Task[]): Promise<void> {
         const { contentEl } = this;
         contentEl.empty();
+
+        const progressBar = this.createProgressBar();
+        contentEl.appendChild(progressBar);
 
         const scheduleTable = this.createTable();
         const tableHead = scheduleTable.createTHead();
@@ -301,6 +313,22 @@ class TimetableView extends ItemView {
             new Notice("Timetable updated!");
         });
         return updateButton;
+    }
+
+    private createProgressBar(): HTMLDivElement {
+        const progressBar = this.contentEl.createEl('div');
+        progressBar.addClass('progress-bar');
+        progressBar.style.height = '10px';
+        progressBar.style.width = '0';
+        progressBar.style.backgroundColor = '#4CAF50';
+        return progressBar;
+    }
+
+    updateProgressBar(duration: number, estimate: number): void {
+        const progressBar = this.contentEl.querySelector('.progress-bar') as HTMLElement;
+        if (!progressBar) return;
+        const width = Math.min((duration / estimate) * 100, 100);
+        progressBar.style.width = width + '%';
     }
 }
 
