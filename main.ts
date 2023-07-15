@@ -250,7 +250,7 @@ class TimetableView extends ItemView {
             if (this.plugin.settings.showBufferTime && startTime && previousEndTime) {
                 const bufferMinutes = Math.floor((new Date(startTime).getTime() - previousEndTime.getTime()) / MILLISECONDS_IN_MINUTE);
                 const bufferRow = document.createElement("tr");
-                bufferRow.classList.add("buffer-time");
+                bufferRow.classList.add("dt-buffer-time");
                 const bufferNameCell = document.createElement("td");
                 bufferNameCell.textContent = "Buffer Time";
                 bufferRow.appendChild(bufferNameCell);
