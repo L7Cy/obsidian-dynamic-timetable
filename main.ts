@@ -317,15 +317,12 @@ class TimetableView extends ItemView {
 
     private createProgressBar(): HTMLDivElement {
         const progressBar = this.contentEl.createEl('div');
-        progressBar.addClass('progress-bar');
-        progressBar.style.height = '10px';
-        progressBar.style.width = '0';
-        progressBar.style.backgroundColor = '#4CAF50';
+        progressBar.addClass('dt-progress-bar');
         return progressBar;
     }
 
     updateProgressBar(duration: number, estimate: number): void {
-        const progressBar = this.contentEl.querySelector('.progress-bar') as HTMLElement;
+        const progressBar = this.contentEl.querySelector('.dt-progress-bar') as HTMLElement;
         if (!progressBar) return;
         const width = Math.min((duration / estimate) * 100, 100);
         progressBar.style.width = width + '%';

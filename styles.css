@@ -8,3 +8,9 @@
 .buffer-time {
     background-color: rgba(128, 128, 128, 0.3);
 }
+
+.dt-progress-bar {
+    height: 10px;
+    width: 0;
+    background-color: #4CAF50;
+}
