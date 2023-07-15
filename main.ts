@@ -13,10 +13,12 @@ interface DynamicTimetableSettings {
     showEstimateInTaskName: boolean;
     showStartTimeInTaskName: boolean;
     showBufferTime: boolean;
+    showProgressBar: boolean;
+    intervalTime: number;
     taskEstimateDelimiter: string;
     startTimeDelimiter: string;
     headerNames: string[];
-    [key: string]: string | boolean | string[] | null | undefined;
+    [key: string]: string | boolean | string[] | number | null | undefined;
 }
 
 declare module "obsidian" {
@@ -36,6 +38,8 @@ export default class DynamicTimetable extends Plugin {
         showEstimateInTaskName: false,
         showStartTimeInTaskName: true,
         showBufferTime: true,
+        showProgressBar: true,
+        intervalTime: 1,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
@@ -183,7 +187,7 @@ class TimetableView extends ItemView {
         this.intervalId = setInterval(() => {
             const duration = this.plugin.targetFile ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000 : 0;
             this.updateProgressBar(duration, topTaskEstimate);
-        }, 1000);
+        }, this.plugin.settings.intervalTime * 1000);
     }
 
     parseTasksFromContent(content: string): Task[] {
@@ -195,8 +199,10 @@ class TimetableView extends ItemView {
         const { contentEl } = this;
         contentEl.empty();
 
-        const progressBar = this.createProgressBar();
-        contentEl.appendChild(progressBar);
+        if (this.plugin.settings.showProgressBar) {
+            const progressBar = this.createProgressBar();
+            contentEl.appendChild(progressBar);
+        }
 
         const scheduleTable = this.createTable();
         const tableHead = scheduleTable.createTHead();
@@ -444,6 +450,12 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             const headerName = this.plugin.settings.headerNames[index] || defaultHeaderName;
             this.createHeaderNameSetting(headerName, index);
         });
+
+        this.createShowProgressBarSetting();
+
+        if (this.plugin.settings.showProgressBar) {
+            this.createIntervalTimeSetting();
+        }
     }
 
     private createFilePathSetting(): Setting {
@@ -608,5 +620,39 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                 await view.update();
             }
         }
+    }
+
+    createShowProgressBarSetting() {
+        const showProgressBarSetting = new Setting(this.containerEl)
+            .setName('Show progress bar')
+            .setDesc('If enabled, displays a progress bar based on the top task estimate.')
+            .addToggle(toggle =>
+                toggle
+                    .setValue(this.plugin.settings.showProgressBar)
+                    .onChange(async value => {
+                        this.plugin.settings.showProgressBar = value;
+                        await this.updateSetting("showProgressBar", value);
+                        this.display();
+                    })
+            );
+        return showProgressBarSetting;
+    }
+
+    private createIntervalTimeSetting(): Setting {
+        const intervalTimeSetting = new Setting(this.containerEl)
+            .setName("Interval Time (seconds)")
+            .addText((text) => {
+                const el = text
+                    .setPlaceholder("1")
+                    .setValue(this.plugin.settings.intervalTime.toString())
+                    .onChange(async (value) => {
+                        const numValue = Number(value);
+                        if (!isNaN(numValue) && numValue > 0) {
+                            await this.updateSetting("intervalTime", numValue);
+                        }
+                    });
+                return el;
+            });
+        return intervalTimeSetting;
     }
 }
