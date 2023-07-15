@@ -14,3 +14,7 @@
     width: 0;
     background-color: #4CAF50;
 }
+
+.dt-progress-bar-overdue {
+    background-color: #e55a16;
+}
