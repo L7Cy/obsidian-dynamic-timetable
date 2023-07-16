@@ -153,7 +153,6 @@ class TimetableView extends ItemView {
     constructor(leaf: WorkspaceLeaf, private readonly plugin: DynamicTimetable) {
         super(leaf);
         this.containerEl.addClass("Timetable");
-        this.taskParser = TaskParser.fromSettings(this.plugin.settings);
 
         plugin.registerEvent(this.app.vault.on("modify", async (file) => {
             if (file === this.plugin.targetFile) {
@@ -183,6 +182,7 @@ class TimetableView extends ItemView {
             return;
         }
         const content = await this.app.vault.cachedRead(this.plugin.targetFile);
+        this.taskParser = TaskParser.fromSettings(this.plugin.settings);
         const tasks = this.parseTasksFromContent(content);
         const topTaskEstimate = tasks[0] ? (Number(tasks[0].estimate) * 60) || 0 : 0;
         await this.renderTable(tasks);
