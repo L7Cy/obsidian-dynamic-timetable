@@ -362,12 +362,11 @@ class TaskParser {
     public filterAndParseTasks(content: string): Task[] {
         const lines = content.split("\n").map(line => line.trim());
         let currentDate = new Date();
-        let nextDay = false;
+        let nextDay = 0;
 
         const tasks = lines.flatMap(line => {
             if (new RegExp(this.dateDelimiter).test(line)) {
-                nextDay = true;
-                currentDate.setDate(currentDate.getDate() + 1);
+                nextDay += 1;
                 return [];
             }
 
@@ -382,11 +381,6 @@ class TaskParser {
             const taskName = this.parseTaskName(line);
             const startTime = this.parseStartTime(line, currentDate, nextDay);
             const estimate = this.parseEstimate(line);
-
-            if (startTime) {
-                currentDate = new Date(startTime);
-                nextDay = false;
-            }
 
             return {
                 task: taskName,
@@ -426,7 +420,7 @@ class TaskParser {
         return taskName;
     }
 
-    public parseStartTime(task: string, currentDate: Date, nextDay: boolean): Date | null {
+    public parseStartTime(task: string, currentDate: Date, nextDay: number): Date | null {
         const timeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{1,2}\\:?\\d{2})`);
         const dateTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`);
 
@@ -445,9 +439,7 @@ class TaskParser {
             const [hours, minutes] = timeSplit.map(Number);
 
             let startDate = new Date(currentDate.getTime());
-            if (nextDay) {
-                startDate.setDate(startDate.getDate() + 1);
-            }
+            startDate.setDate(startDate.getDate() + nextDay);
             startDate.setHours(hours, minutes, 0, 0);
 
             return startDate;
