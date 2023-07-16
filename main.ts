@@ -19,6 +19,7 @@ interface DynamicTimetableSettings {
     startTimeDelimiter: string;
     headerNames: string[];
     dateDelimiter: string;
+    enableOverdueNotice: boolean;
     [key: string]: string | boolean | string[] | number | null | undefined;
 }
 
@@ -44,6 +45,7 @@ export default class DynamicTimetable extends Plugin {
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
         dateDelimiter: "^---$",
+        enableOverdueNotice: true,
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     };
 
@@ -337,8 +339,8 @@ class TimetableView extends ItemView {
         progressBar.style.width = width + '%';
         if (duration > estimate) {
             progressBar.addClass('dt-progress-bar-overdue');
-            if (!this.overdueNotice) {
-                this.overdueNotice = new Notice('Time is up!', 0);
+            if (!this.overdueNotice && this.plugin.settings.enableOverdueNotice) {
+                this.overdueNotice = new Notice('Have you finished?', 0);
             }
         } else {
             progressBar.removeClass('dt-progress-bar-overdue');
@@ -493,6 +495,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             this.createIntervalTimeSetting();
         }
         this.createDateDelimiterSetting();
+        this.createEnableOverdueNoticeSetting();
     }
 
     private createFilePathSetting(): Setting {
@@ -712,5 +715,19 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             });
 
         return dateDelimiterSetting;
+    }
+
+    private createEnableOverdueNoticeSetting(): Setting {
+        const enableOverdueNoticeSetting = new Setting(this.containerEl)
+            .setName("Enable overdue notice")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.enableOverdueNotice)
+                    .onChange(async (value) => {
+                        await this.updateSetting("enableOverdueNotice", value);
+                    })
+            );
+
+        return enableOverdueNoticeSetting;
     }
 }
