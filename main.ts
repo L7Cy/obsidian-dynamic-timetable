@@ -213,8 +213,8 @@ class TimetableView extends ItemView {
         tableHead.appendChild(this.createTableHeader());
         this.appendTableBodyRows(tableBody, tasks);
 
-        const updateButton = this.createUpdateButton();
-        contentEl.appendChild(updateButton);
+        const initButton = this.createInitButton();
+        contentEl.appendChild(initButton);
         contentEl.appendChild(scheduleTable);
     }
 
@@ -314,13 +314,13 @@ class TimetableView extends ItemView {
         return new Intl.DateTimeFormat(navigator.language, { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
     }
 
-    private createUpdateButton(): HTMLButtonElement {
-        const updateButton = this.contentEl.createEl("button", { text: "Update" });
-        updateButton.addEventListener("click", async () => {
-            await this.update();
-            new Notice("Timetable updated!");
+    private createInitButton(): HTMLButtonElement {
+        const initButton = this.contentEl.createEl("button", { text: "Init" });
+        initButton.addEventListener("click", async () => {
+            await this.plugin.initTimetableView();
+            new Notice("Timetable initialized!");
         });
-        return updateButton;
+        return initButton;
     }
 
     private createProgressBar(): HTMLDivElement {
