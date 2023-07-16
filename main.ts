@@ -146,6 +146,7 @@ export default class DynamicTimetable extends Plugin {
 class TimetableView extends ItemView {
     private taskParser: TaskParser;
     private intervalId: ReturnType<typeof setInterval> | undefined;
+    private overdueNotice: Notice | null = null;
 
     constructor(leaf: WorkspaceLeaf, private readonly plugin: DynamicTimetable) {
         super(leaf);
@@ -336,8 +337,15 @@ class TimetableView extends ItemView {
         progressBar.style.width = width + '%';
         if (duration > estimate) {
             progressBar.addClass('dt-progress-bar-overdue');
+            if (!this.overdueNotice) {
+                this.overdueNotice = new Notice('Time is up!', 0);
+            }
         } else {
             progressBar.removeClass('dt-progress-bar-overdue');
+            if (this.overdueNotice) {
+                this.overdueNotice.hide();
+                this.overdueNotice = null;
+            }
         }
     }
 }
