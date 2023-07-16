@@ -188,6 +188,10 @@ class TimetableView extends ItemView {
         await this.renderTable(tasks);
         if (this.intervalId) {
             clearInterval(this.intervalId);
+            if (this.overdueNotice) {
+                this.overdueNotice.hide();
+                this.overdueNotice = null;
+            }
         }
         this.intervalId = setInterval(() => {
             const duration = this.plugin.targetFile ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000 : 0;
@@ -337,12 +341,9 @@ class TimetableView extends ItemView {
         if (!progressBar) return;
         const width = Math.min((duration / estimate) * 100, 100);
         progressBar.style.width = width + '%';
-        if (duration > estimate) {
-            progressBar.addClass('dt-progress-bar-overdue');
-            if (!this.overdueNotice && this.plugin.settings.enableOverdueNotice) {
-                this.overdueNotice = new Notice('Are you finished?', 0);
-            }
-        } else {
+        if (width === 100 && !this.overdueNotice && this.plugin.settings.enableOverdueNotice) {
+            this.overdueNotice = new Notice('Are you finished?', 0);
+        } else if (width < 100) {
             progressBar.removeClass('dt-progress-bar-overdue');
             if (this.overdueNotice) {
                 this.overdueNotice.hide();
