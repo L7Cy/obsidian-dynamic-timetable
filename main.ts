@@ -18,6 +18,7 @@ interface DynamicTimetableSettings {
     taskEstimateDelimiter: string;
     startTimeDelimiter: string;
     headerNames: string[];
+    dateDelimiter: string;
     [key: string]: string | boolean | string[] | number | null | undefined;
 }
 
@@ -42,6 +43,7 @@ export default class DynamicTimetable extends Plugin {
         intervalTime: 1,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
+        dateDelimiter: "^---$",
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     };
 
@@ -341,27 +343,48 @@ class TimetableView extends ItemView {
 }
 
 class TaskParser {
-    constructor(private separator: string, private startTimeDelimiter: string, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) { }
+    constructor(private separator: string, private startTimeDelimiter: string, private dateDelimiter: RegExp, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) { }
 
     static fromSettings(settings: DynamicTimetableSettings): TaskParser {
-        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter, settings.showStartTimeInTaskName, settings.showEstimateInTaskName);
+        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter, new RegExp(settings.dateDelimiter), settings.showStartTimeInTaskName, settings.showEstimateInTaskName);
     }
 
     public filterAndParseTasks(content: string): Task[] {
-        const tasks = content.split("\n")
-            .map(line => line.trim())
-            .filter(line => line.startsWith("- [ ]") || line.startsWith("+ [ ]") || line.startsWith("* [ ]"))
-            .filter(task => task.includes(this.separator) || task.includes(this.startTimeDelimiter))
-            .map(task => {
-                const taskName = this.parseTaskName(task);
-                const startTime = this.parseStartTime(task);
-                const estimate = this.parseEstimate(task);
-                return {
-                    task: taskName,
-                    startTime: startTime,
-                    estimate: estimate
-                };
-            });
+        const lines = content.split("\n").map(line => line.trim());
+        let currentDate = new Date();
+        let nextDay = false;
+
+        const tasks = lines.flatMap(line => {
+            if (new RegExp(this.dateDelimiter).test(line)) {
+                nextDay = true;
+                currentDate.setDate(currentDate.getDate() + 1);
+                return [];
+            }
+
+            if (!line.startsWith("- [ ]") && !line.startsWith("+ [ ]") && !line.startsWith("* [ ]")) {
+                return [];
+            }
+
+            if (!line.includes(this.separator) && !line.includes(this.startTimeDelimiter)) {
+                return [];
+            }
+
+            const taskName = this.parseTaskName(line);
+            const startTime = this.parseStartTime(line, currentDate, nextDay);
+            const estimate = this.parseEstimate(line);
+
+            if (startTime) {
+                currentDate = new Date(startTime);
+                nextDay = false;
+            }
+
+            return {
+                task: taskName,
+                startTime: startTime,
+                estimate: estimate
+            };
+        });
+
         return tasks;
     }
 
@@ -393,7 +416,7 @@ class TaskParser {
         return taskName;
     }
 
-    public parseStartTime(task: string): Date | null {
+    public parseStartTime(task: string, currentDate: Date, nextDay: boolean): Date | null {
         const timeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{1,2}\\:?\\d{2})`);
         const dateTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`);
 
@@ -406,12 +429,17 @@ class TaskParser {
                 return parsedDateTime;
             }
         } else if (timeMatch) {
-            const currentTime = new Date();
             const timeSplit = timeMatch[1].split(":").length == 1 ?
                 timeMatch[1].length == 3 ? [timeMatch[1].substring(0, 1), timeMatch[1].substring(1, 3)] : [timeMatch[1].substring(0, 2), timeMatch[1].substring(2, 4)] :
                 timeMatch[1].split(":");
             const [hours, minutes] = timeSplit.map(Number);
-            const startDate = new Date(currentTime.setHours(hours, minutes));
+
+            let startDate = new Date(currentDate.getTime());
+            if (nextDay) {
+                startDate.setDate(startDate.getDate() + 1);
+            }
+            startDate.setHours(hours, minutes, 0, 0);
+
             return startDate;
         }
 
@@ -456,6 +484,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         if (this.plugin.settings.showProgressBar) {
             this.createIntervalTimeSetting();
         }
+        this.createDateDelimiterSetting();
     }
 
     private createFilePathSetting(): Setting {
@@ -654,5 +683,26 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                 return el;
             });
         return intervalTimeSetting;
+    }
+
+    private createDateDelimiterSetting(): Setting {
+        const dateDelimiterSetting = new Setting(this.containerEl)
+            .setName("Date Delimiter")
+            .setDesc("Enter a regex that matches the delimiter for a new day.")
+            .addText((text) => {
+                const el = text
+                    .setPlaceholder("^---$")
+                    .setValue(this.plugin.settings.dateDelimiter || "");
+                el.inputEl.addEventListener("change", async (ev) => {
+                    if (!(ev.target instanceof HTMLInputElement)) {
+                        return;
+                    }
+                    const value = ev.target.value.trim();
+                    await this.updateSetting("dateDelimiter", value);
+                });
+                return el;
+            });
+
+        return dateDelimiterSetting;
     }
 }
