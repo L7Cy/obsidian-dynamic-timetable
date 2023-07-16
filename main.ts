@@ -342,6 +342,7 @@ class TimetableView extends ItemView {
         const width = Math.min((duration / estimate) * 100, 100);
         progressBar.style.width = width + '%';
         if (width === 100 && !this.overdueNotice && this.plugin.settings.enableOverdueNotice) {
+            progressBar.addClass('dt-progress-bar-overdue');
             this.overdueNotice = new Notice('Are you finished?', 0);
         } else if (width < 100) {
             progressBar.removeClass('dt-progress-bar-overdue');
