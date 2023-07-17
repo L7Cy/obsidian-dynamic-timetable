@@ -35,8 +35,8 @@ The start time is optional and can be added in two formats:
 ### Task background color
 When a start time is specified, tasks will have a background color based on the comparison with the end time of the previous task:
 
-- Green: Indicates that the task is likely to start at the scheduled time, and there may be room to add more tasks before it.
-- Red: Indicates that it may be difficult to start the task at the scheduled time, and adjustments to previous tasks may be necessary.
+- 🟢Green: Indicates that the task is likely to start at the scheduled time, and there may be room to add more tasks before it.
+- 🔴Red: Indicates that it may be difficult to start the task at the scheduled time, and adjustments to previous tasks may be necessary.
 
 This visual cue helps us understand how to effectively adjust our tasks.
 
