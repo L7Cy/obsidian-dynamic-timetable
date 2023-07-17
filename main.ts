@@ -49,10 +49,6 @@ export default class DynamicTimetable extends Plugin {
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     };
 
-    onunload(): void {
-        this.closeTimetable();
-    }
-
     async onload() {
         console.log("DynamicTimetable: onload");
 
@@ -69,6 +65,19 @@ export default class DynamicTimetable extends Plugin {
                 this.app.workspace.on("layout-ready", this.initTimetableView.bind(this))
             );
         }
+    }
+
+    onunload(): void {
+        this.closeTimetable();
+    }
+
+    async updateSetting<T extends keyof DynamicTimetableSettings>(
+        settingName: T,
+        newValue: DynamicTimetableSettings[T]
+    ): Promise<void> {
+        this.settings[settingName] = newValue;
+        await this.saveData(this.settings);
+        await this.updateOpenTimetableViews();
     }
 
     private registerCommands(): void {
@@ -150,6 +159,15 @@ class TimetableView extends ItemView {
     private intervalId: ReturnType<typeof setInterval> | undefined;
     private overdueNotice: Notice | null = null;
 
+    private static readonly MILLISECONDS_IN_MINUTE = 60000;
+    private static readonly LATE_CLASS = "late";
+    private static readonly ON_TIME_CLASS = "on-time";
+    private static readonly BUFFER_TIME_CLASS = "dt-buffer-time";
+    private static readonly BUFFER_TIME_NAME = "Buffer Time";
+    private static readonly PROGRESS_BAR_CLASS = 'dt-progress-bar';
+    private static readonly PROGRESS_BAR_OVERDUE_CLASS = 'dt-progress-bar-overdue';
+    private static readonly INIT_BUTTON_TEXT = "Init";
+
     constructor(leaf: WorkspaceLeaf, private readonly plugin: DynamicTimetable) {
         super(leaf);
         this.containerEl.addClass("Timetable");
@@ -183,7 +201,7 @@ class TimetableView extends ItemView {
         }
         const content = await this.app.vault.cachedRead(this.plugin.targetFile);
         this.taskParser = TaskParser.fromSettings(this.plugin.settings);
-        const tasks = this.parseTasksFromContent(content);
+        const tasks = this.taskParser.filterAndParseTasks(content);
         const topTaskEstimate = tasks[0] ? (Number(tasks[0].estimate) * 60) || 0 : 0;
         await this.renderTable(tasks);
         if (this.intervalId) {
@@ -195,13 +213,8 @@ class TimetableView extends ItemView {
         }
         this.intervalId = setInterval(() => {
             const duration = this.plugin.targetFile ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000 : 0;
-            this.updateProgressBar(duration, topTaskEstimate);
+            this.createOrUpdateProgressBar(duration, topTaskEstimate);
         }, this.plugin.settings.intervalTime * 1000);
-    }
-
-    parseTasksFromContent(content: string): Task[] {
-        const tasks = this.taskParser.filterAndParseTasks(content);
-        return tasks;
     }
 
     async renderTable(tasks: Task[]): Promise<void> {
@@ -209,8 +222,7 @@ class TimetableView extends ItemView {
         contentEl.empty();
 
         if (this.plugin.settings.showProgressBar) {
-            const progressBar = this.createProgressBar();
-            contentEl.appendChild(progressBar);
+            this.createOrUpdateProgressBar(0, 0);
         }
 
         const scheduleTable = this.createTable();
@@ -246,7 +258,6 @@ class TimetableView extends ItemView {
 
     private appendTableBodyRows(tableBody: HTMLTableSectionElement, tasks: Task[]): void {
         const { showEstimate, showStartTime } = this.plugin.settings;
-        const MILLISECONDS_IN_MINUTE = 60000;
 
         let currentTime = new Date();
         let previousEndTime: Date | null = null;
@@ -260,30 +271,14 @@ class TimetableView extends ItemView {
                 currentTime = previousEndTime;
             }
 
-            const endTime = minutes ? new Date(currentTime.getTime() + minutes * MILLISECONDS_IN_MINUTE) : null;
+            const endTime = minutes ? new Date(currentTime.getTime() + minutes * TimetableView.MILLISECONDS_IN_MINUTE) : null;
 
             if (this.plugin.settings.showBufferTime && startTime && previousEndTime) {
-                const bufferMinutes = Math.floor((new Date(startTime).getTime() - previousEndTime.getTime()) / MILLISECONDS_IN_MINUTE);
-                const bufferRow = document.createElement("tr");
-                bufferRow.classList.add("dt-buffer-time");
-                const bufferNameCell = document.createElement("td");
-                bufferNameCell.textContent = "Buffer Time";
-                bufferRow.appendChild(bufferNameCell);
-                const bufferTimeCell = document.createElement("td");
-                bufferTimeCell.textContent = `${bufferMinutes}m`;
-                bufferTimeCell.setAttribute("colspan", "3");
-                bufferRow.appendChild(bufferTimeCell);
-                tableBody.appendChild(bufferRow);
+                const bufferMinutes = Math.floor((new Date(startTime).getTime() - previousEndTime.getTime()) / TimetableView.MILLISECONDS_IN_MINUTE);
+                tableBody.appendChild(this.createBufferRow(bufferMinutes));
             }
 
-            let rowClass = null;
-            if (startTime) {
-                if (previousEndTime && new Date(startTime) < previousEndTime) {
-                    rowClass = "late";
-                } else {
-                    rowClass = "on-time";
-                }
-            }
+            const rowClass = startTime ? (previousEndTime && new Date(startTime) < previousEndTime) ? TimetableView.LATE_CLASS : TimetableView.ON_TIME_CLASS : null;
 
             const tableRowValues = [parsedTaskName];
             if (showEstimate && estimate) {
@@ -304,17 +299,34 @@ class TimetableView extends ItemView {
         }
     }
 
+    private createTableCell(value: string, isHeader = false): HTMLElement {
+        const cell = document.createElement(isHeader ? "th" : "td");
+        cell.textContent = value;
+        return cell;
+    }
+
     private createTableRow(rowValues: string[], isHeader = false, rowClass: string | null = null): HTMLTableRowElement {
         const row = document.createElement("tr");
         if (rowClass) {
             row.classList.add(rowClass);
         }
         rowValues.forEach((value) => {
-            const cell = document.createElement(isHeader ? "th" : "td");
-            cell.textContent = value;
+            const cell = this.createTableCell(value, isHeader);
             row.appendChild(cell);
         });
         return row;
+    }
+
+    private createBufferRow(bufferMinutes: number): HTMLTableRowElement {
+        const bufferRow = document.createElement("tr");
+        bufferRow.classList.add(TimetableView.BUFFER_TIME_CLASS);
+        const bufferNameCell = this.createTableCell(TimetableView.BUFFER_TIME_NAME);
+        bufferRow.appendChild(bufferNameCell);
+        const bufferTimeCell = document.createElement("td");
+        bufferTimeCell.textContent = `${bufferMinutes}m`;
+        bufferTimeCell.setAttribute("colspan", "3");
+        bufferRow.appendChild(bufferTimeCell);
+        return bufferRow;
     }
 
     private formatTime(date: Date): string {
@@ -322,7 +334,7 @@ class TimetableView extends ItemView {
     }
 
     private createInitButton(): HTMLButtonElement {
-        const initButton = this.contentEl.createEl("button", { text: "Init" });
+        const initButton = this.contentEl.createEl("button", { text: TimetableView.INIT_BUTTON_TEXT });
         initButton.addEventListener("click", async () => {
             await this.plugin.initTimetableView();
             new Notice("Timetable initialized!");
@@ -330,22 +342,19 @@ class TimetableView extends ItemView {
         return initButton;
     }
 
-    private createProgressBar(): HTMLDivElement {
-        const progressBar = this.contentEl.createEl('div');
-        progressBar.addClass('dt-progress-bar');
-        return progressBar;
-    }
-
-    updateProgressBar(duration: number, estimate: number): void {
-        const progressBar = this.contentEl.querySelector('.dt-progress-bar') as HTMLElement;
-        if (!progressBar) return;
+    private createOrUpdateProgressBar(duration: number, estimate: number): void {
+        let progressBar = this.contentEl.querySelector('.' + TimetableView.PROGRESS_BAR_CLASS) as HTMLElement;
+        if (!progressBar) {
+            progressBar = this.contentEl.createEl('div');
+            progressBar.addClass(TimetableView.PROGRESS_BAR_CLASS);
+        }
         const width = Math.min((duration / estimate) * 100, 100);
         progressBar.style.width = width + '%';
         if (width === 100 && !this.overdueNotice && this.plugin.settings.enableOverdueNotice) {
-            progressBar.addClass('dt-progress-bar-overdue');
+            progressBar.addClass(TimetableView.PROGRESS_BAR_OVERDUE_CLASS);
             this.overdueNotice = new Notice('Are you finished?', 0);
         } else if (width < 100) {
-            progressBar.removeClass('dt-progress-bar-overdue');
+            progressBar.removeClass(TimetableView.PROGRESS_BAR_OVERDUE_CLASS);
             if (this.overdueNotice) {
                 this.overdueNotice.hide();
                 this.overdueNotice = null;
@@ -355,7 +364,25 @@ class TimetableView extends ItemView {
 }
 
 class TaskParser {
-    constructor(private separator: string, private startTimeDelimiter: string, private dateDelimiter: RegExp, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) { }
+    private static readonly TASK_NAME_REGEX = /^[-+*]\s*\[\s*.\s*\]/;
+    private static readonly LINK_REGEX = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
+    private static readonly MARKDOWN_LINK_REGEX = /\[([^\[\]]+)\]\(.+?\)/g;
+
+    private taskNameRegex: RegExp;
+    private linkRegex: RegExp;
+    private markdownLinkRegex: RegExp;
+    private estimateRegex: RegExp;
+    private timeRegex: RegExp;
+    private dateTimeRegex: RegExp;
+
+    constructor(private separator: string, private startTimeDelimiter: string, private dateDelimiter: RegExp, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) {
+        this.taskNameRegex = TaskParser.TASK_NAME_REGEX;
+        this.linkRegex = TaskParser.LINK_REGEX;
+        this.markdownLinkRegex = TaskParser.MARKDOWN_LINK_REGEX;
+        this.estimateRegex = new RegExp(`\\${separator}\\s*\\d+\\s*`);
+        this.timeRegex = new RegExp(`\\${startTimeDelimiter}\\s*(\\d{1,2}\\:?\\d{2})`);
+        this.dateTimeRegex = new RegExp(`\\${startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`);
+    }
 
     static fromSettings(settings: DynamicTimetableSettings): TaskParser {
         return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter, new RegExp(settings.dateDelimiter), settings.showStartTimeInTaskName, settings.showEstimateInTaskName);
@@ -395,15 +422,11 @@ class TaskParser {
     }
 
     public parseTaskName(taskName: string): string {
-        const taskNameRegex = /^[-+*]\s*\[\s*.\s*\]\s*/;
-        const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
-        const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
-
         taskName = taskName
-            .replace(taskNameRegex, "")
+            .replace(this.taskNameRegex, "")
             .trim()
-            .replace(linkRegex, "$2")
-            .replace(markdownLinkRegex, "$1")
+            .replace(this.linkRegex, "$2")
+            .replace(this.markdownLinkRegex, "$1")
             .trim();
 
         const startTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}\\:?\\d{2})`);
@@ -415,19 +438,15 @@ class TaskParser {
         }
 
         if (!this.showEstimateInTaskName) {
-            const estimateRegex = new RegExp(`\\${this.separator}\\s*\\d+\\s*`);
-            taskName = taskName.replace(estimateRegex, "").trim();
+            taskName = taskName.replace(this.estimateRegex, "").trim();
         }
 
         return taskName;
     }
 
     public parseStartTime(task: string, currentDate: Date, nextDay: number): Date | null {
-        const timeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{1,2}\\:?\\d{2})`);
-        const dateTimeRegex = new RegExp(`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`);
-
-        const timeMatch = task.match(timeRegex);
-        const dateTimeMatch = task.match(dateTimeRegex);
+        const timeMatch = task.match(this.timeRegex);
+        const dateTimeMatch = task.match(this.dateTimeRegex);
 
         if (dateTimeMatch) {
             const parsedDateTime = new Date(dateTimeMatch[1]);
@@ -468,261 +487,84 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     display(): void {
         this.containerEl.empty();
 
-        this.createFilePathSetting();
-        this.createShowEstimateSetting();
-        this.createShowStartTimeSetting();
-        this.createShowEstimateInTaskNameSetting();
-        this.createShowStartTimeInTaskNameSetting();
-        this.createShowBufferTimeSetting();
-        this.createTaskEstimateDelimiterSetting();
-        this.createStartTimeDelimiterSetting();
+        this.createSetting('File Path', 'Enter the path to the Markdown file to get task list from. Leave blank to use active file.', 'filePath', 'text', '/path/to/target/file.md');
+        this.createSetting('Show Estimate Column', '', 'showEstimate', 'toggle');
+        this.createSetting('Show Start Time Column', '', 'showStartTime', 'toggle');
+        this.createSetting('Show estimate in task name', '', 'showEstimateInTaskName', 'toggle');
+        this.createSetting('Show start time in task name', '', 'showStartTimeInTaskName', 'toggle');
+        this.createSetting('Show Buffer Time Rows', '', 'showBufferTime', 'toggle');
+        this.createSetting('Task/Estimate Delimiter', '', 'taskEstimateDelimiter', 'text', ';');
+        this.createSetting('Start Time Delimiter', '', 'startTimeDelimiter', 'text', '@');
 
-        const defaultHeaderNames = DynamicTimetable.DEFAULT_SETTINGS.headerNames;
-        defaultHeaderNames.forEach((defaultHeaderName, index) => {
-            const headerName = this.plugin.settings.headerNames[index] || defaultHeaderName;
-            this.createHeaderNameSetting(headerName, index);
-        });
+        const headerNames = this.plugin.settings.headerNames.join(', ');
+        this.createSetting('Header Names', '', 'headerNames', 'text', headerNames);
 
-        this.createShowProgressBarSetting();
-
+        this.createSetting('Show progress bar', 'If enabled, displays a progress bar based on the top task estimate.', 'showProgressBar', 'toggle');
         if (this.plugin.settings.showProgressBar) {
-            this.createIntervalTimeSetting();
+            this.createSetting('Interval Time (seconds)', '', 'intervalTime', 'text', '1');
         }
-        this.createDateDelimiterSetting();
-        this.createEnableOverdueNoticeSetting();
+        this.createSetting('Date Delimiter', 'Enter a regex that matches the delimiter for a new day.', 'dateDelimiter', 'text', '^---$');
+        this.createSetting('Enable overdue notice', '', 'enableOverdueNotice', 'toggle');
     }
 
-    private createFilePathSetting(): Setting {
-        const filePathSetting = new Setting(this.containerEl)
-            .setName("File Path")
-            .setDesc(
-                "Enter the path to the Markdown file to get task list from. Leave blank to use active file."
-            )
-            .addText((text) => {
-                const el = text
-                    .setPlaceholder("/path/to/target/file.md")
-                    .setValue(this.plugin.settings.filePath || "");
-                el.inputEl.addEventListener("change", this.onFilePathChange.bind(this));
-                return el;
-            });
-
-        return filePathSetting;
-    }
-
-    private createShowEstimateSetting(): Setting {
-        const showEstimateSetting = new Setting(this.containerEl)
-            .setName("Show Estimate Column")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showEstimate)
-                    .onChange(async (value) => {
-                        await this.updateSetting("showEstimate", value);
-                    })
-            );
-
-        return showEstimateSetting;
-    }
-
-    private createShowStartTimeSetting(): Setting {
-        const showStartTimeSetting = new Setting(this.containerEl)
-            .setName("Show Start Time Column")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showStartTime)
-                    .onChange(async (value) => {
-                        await this.updateSetting("showStartTime", value);
-                    })
-            );
-
-        return showStartTimeSetting;
-    }
-
-    private createShowEstimateInTaskNameSetting(): Setting {
-        const showEstimateInTaskNameSetting = new Setting(this.containerEl)
-            .setName("Show estimate in task name")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showEstimateInTaskName)
-                    .onChange(async (value) => {
-                        await this.updateSetting("showEstimateInTaskName", value);
-                })
-            );
-
-        return showEstimateInTaskNameSetting;
-    }
-
-    private createShowStartTimeInTaskNameSetting(): Setting {
-        const showStartInTaskNameSetting = new Setting(this.containerEl)
-            .setName("Show start time in task name")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showStartTimeInTaskName)
-                    .onChange(async (value) => {
-                        await this.updateSetting("showStartInTaskName", value);
-                })
-            );
-
-        return showStartInTaskNameSetting;
-    }
-
-    private createShowBufferTimeSetting(): Setting {
-        const showBufferTimeSetting = new Setting(this.containerEl)
-            .setName("Show Buffer Time Rows")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.showBufferTime)
-                    .onChange(async (value) => {
-                        await this.updateSetting("showBufferTime", value);
-                    })
-            );
-
-        return showBufferTimeSetting;
-    }
-
-    private createTaskEstimateDelimiterSetting(): Setting {
-        const taskEstimateDelimiterSetting = new Setting(this.containerEl)
-            .setName("Task/Estimate Delimiter")
-            .addText((text) => {
-                const el = text
-                    .setPlaceholder(";")
-                    .setValue(this.plugin.settings.taskEstimateDelimiter);
-                el.inputEl.addEventListener("change", async (ev) => {
-                    if (!(ev.target instanceof HTMLInputElement)) {
-                        return;
-                    }
-                    const value = ev.target.value.trim();
-                    await this.updateSetting("taskEstimateDelimiter", value);
-                });
-                return el;
-            });
-
-        return taskEstimateDelimiterSetting;
-    }
-
-    private createStartTimeDelimiterSetting(): Setting {
-        const startTimeDelimiterSetting = new Setting(this.containerEl)
-            .setName("Start Time Delimiter")
-            .addText((text) => {
-                const el = text
-                    .setPlaceholder("@")
-                    .setValue(this.plugin.settings.startTimeDelimiter);
-                el.inputEl.addEventListener("change", async (ev) => {
-                    if (!(ev.target instanceof HTMLInputElement)) {
-                        return;
-                    }
-                    const value = ev.target.value.trim();
-                    await this.updateSetting("startTimeDelimiter", value);
-                });
-                return el;
-            });
-
-        return startTimeDelimiterSetting;
-    }
-
-    private createHeaderNameSetting(headerName: string, index: number): Setting {
-        const headerNameSetting = new Setting(this.containerEl)
-            .setName(`Header Name ${index + 1}`)
-            .addText((text) =>
-                text
-                    .setValue(headerName)
-                    .onChange(async (value) => {
-                        const headerNames = [...this.plugin.settings.headerNames];
-                        headerNames[index] = value;
-                        await this.updateSetting("headerNames", headerNames);
-                    })
-            );
-
-        return headerNameSetting;
-    }
-
-    private async onFilePathChange(ev: Event): Promise<void> {
-        if (!(ev.target instanceof HTMLInputElement)) {
+    /**
+ * Creates a new setting with the given parameters.
+ * @param {string} name - The name of the setting.
+ * @param {string} desc - The description of the setting.
+ * @param {string} key - The key for the setting.
+ * @param {'text' | 'toggle'} type - The type of the setting.
+ * @param {string} [placeholder] - The placeholder for the setting.
+ */
+    createSetting(name: string, desc: string, key: string, type: 'text' | 'toggle', placeholder?: string) {
+        if (key === 'headerNames') {
+            this.createHeaderNamesSetting(placeholder || '');
             return;
         }
-        const value = ev.target.value.trim();
-        return this.updateSetting("filePath", value);
-    }
 
-    private async updateSetting<T extends keyof DynamicTimetableSettings>(
-        settingName: T,
-        newValue: DynamicTimetableSettings[T]
-    ): Promise<void> {
-        this.plugin.settings[settingName] = newValue;
-        await this.plugin.saveData(this.plugin.settings);
-
-        for (let leaf of this.plugin.app.workspace.getLeavesOfType("Timetable")) {
-            let view = leaf.view;
-            if (view instanceof TimetableView) {
-                await view.update();
-            }
+        if (type === 'text') {
+            this.createTextSetting(name, desc, key, placeholder);
+        } else if (type === 'toggle') {
+            this.createToggleSetting(name, desc, key);
         }
     }
 
-    createShowProgressBarSetting() {
-        const showProgressBarSetting = new Setting(this.containerEl)
-            .setName('Show progress bar')
-            .setDesc('If enabled, displays a progress bar based on the top task estimate.')
-            .addToggle(toggle =>
-                toggle
-                    .setValue(this.plugin.settings.showProgressBar)
-                    .onChange(async value => {
-                        await this.updateSetting("showProgressBar", value);
-                        this.display();
-                    })
-            );
-        return showProgressBarSetting;
-    }
-
-    private createIntervalTimeSetting(): Setting {
-        const intervalTimeSetting = new Setting(this.containerEl)
-            .setName("Interval Time (seconds)")
-            .addText((text) => {
-                const el = text
-                    .setPlaceholder("1")
-                    .setValue(this.plugin.settings.intervalTime.toString())
-                    .onChange(async (value) => {
-                        const numValue = Number(value);
-                        if (!isNaN(numValue) && numValue > 0) {
-                            await this.updateSetting("intervalTime", numValue);
-                        }
-                    });
-                return el;
+    createTextSetting(name: string, desc: string, key: string, placeholder?: string) {
+        const setting = new Setting(this.containerEl).setName(name).setDesc(desc);
+        setting.addText(text => {
+            const el = text
+                .setPlaceholder(placeholder || '')
+                .setValue((this.plugin.settings[key] as string) || '');
+            el.inputEl.addEventListener('blur', async (event) => {
+                const value = (event.target as HTMLInputElement).value;
+                await this.plugin.updateSetting(key, value);
             });
-        return intervalTimeSetting;
+            return el;
+        });
     }
 
-    private createDateDelimiterSetting(): Setting {
-        const dateDelimiterSetting = new Setting(this.containerEl)
-            .setName("Date Delimiter")
-            .setDesc("Enter a regex that matches the delimiter for a new day.")
-            .addText((text) => {
-                const el = text
-                    .setPlaceholder("^---$")
-                    .setValue(this.plugin.settings.dateDelimiter || "");
-                el.inputEl.addEventListener("change", async (ev) => {
-                    if (!(ev.target instanceof HTMLInputElement)) {
-                        return;
-                    }
-                    const value = ev.target.value.trim();
-                    await this.updateSetting("dateDelimiter", value);
+    createToggleSetting(name: string, desc: string, key: string) {
+        const setting = new Setting(this.containerEl).setName(name).setDesc(desc);
+        setting.addToggle(toggle =>
+            toggle.setValue(!!(this.plugin.settings[key] as boolean))
+                .onChange(async (value) => {
+                    await this.plugin.updateSetting(key, value);
+                    this.display();
+                })
+        );
+    }
+
+    createHeaderNamesSetting(headerNames: string) {
+        new Setting(this.containerEl)
+            .setName('Header Names')
+            .addText(text => {
+                const el = text.setValue(headerNames);
+                el.inputEl.style.width = '90%';
+                el.inputEl.addEventListener('blur', async (event) => {
+                    const value = (event.target as HTMLInputElement).value.split(',').map(s => s.trim());
+                    await this.plugin.updateSetting("headerNames", value);
+                    this.display();
                 });
                 return el;
             });
-
-        return dateDelimiterSetting;
-    }
-
-    private createEnableOverdueNoticeSetting(): Setting {
-        const enableOverdueNoticeSetting = new Setting(this.containerEl)
-            .setName("Enable overdue notice")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.enableOverdueNotice)
-                    .onChange(async (value) => {
-                        await this.updateSetting("enableOverdueNotice", value);
-                    })
-            );
-
-        return enableOverdueNoticeSetting;
     }
 }
