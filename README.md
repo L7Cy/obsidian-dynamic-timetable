@@ -40,19 +40,5 @@ When a start time is specified, tasks will have a background color based on the 
 
 This visual cue helps us understand how to effectively adjust our tasks.
 
-## Settings
-You can customize the plugin by opening the plugin settings (in the settings sidebar, under "Community Plugins") and changing the following options.
-
-### File path
-The path to the Markdown file containing the task list (default: active file).
-### Show estimate
-Whether to show time estimates for each task.
-### Task Estimate Delimiter
-The character used to separate the task name and time estimate (default: ";").
-### Start Time Delimiter
-The character used to separate the task name and start time (default: "@").
-### Header Names
-The names of the columns in the task list table (default: Tasks, Estimate, End).
-
 ## License
 This software is released under the [MIT License](https://opensource.org/license/mit/).
