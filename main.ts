@@ -490,21 +490,21 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         this.createSetting('File Path', 'Enter the path to the Markdown file to get task list from. Leave blank to use active file.', 'filePath', 'text', '/path/to/target/file.md');
         this.createSetting('Show Estimate Column', '', 'showEstimate', 'toggle');
         this.createSetting('Show Start Time Column', '', 'showStartTime', 'toggle');
-        this.createSetting('Show estimate in task name', '', 'showEstimateInTaskName', 'toggle');
-        this.createSetting('Show start time in task name', '', 'showStartTimeInTaskName', 'toggle');
+        this.createSetting('Show Estimate in Task Name', '', 'showEstimateInTaskName', 'toggle');
+        this.createSetting('Show Start Time in Task Name', '', 'showStartTimeInTaskName', 'toggle');
         this.createSetting('Show Buffer Time Rows', '', 'showBufferTime', 'toggle');
         this.createSetting('Task/Estimate Delimiter', '', 'taskEstimateDelimiter', 'text', ';');
         this.createSetting('Start Time Delimiter', '', 'startTimeDelimiter', 'text', '@');
 
         const headerNames = this.plugin.settings.headerNames.join(', ');
-        this.createSetting('Header Names', '', 'headerNames', 'text', headerNames);
+        this.createSetting('Header Names', 'Enter header names, separated by commas.', 'headerNames', 'text', headerNames);
 
-        this.createSetting('Show progress bar', 'If enabled, displays a progress bar based on the top task estimate.', 'showProgressBar', 'toggle');
+        this.createSetting('Show Progress Bar', 'If enabled, displays a progress bar based on the top task estimate.', 'showProgressBar', 'toggle');
         if (this.plugin.settings.showProgressBar) {
-            this.createSetting('Interval Time (seconds)', '', 'intervalTime', 'text', '1');
+            this.createSetting('Interval Time (Seconds)', 'Set the interval for updating the progress bar.', 'intervalTime', 'text', '1');
         }
         this.createSetting('Date Delimiter', 'Enter a regex that matches the delimiter for a new day.', 'dateDelimiter', 'text', '^---$');
-        this.createSetting('Enable overdue notice', '', 'enableOverdueNotice', 'toggle');
+        this.createSetting('Enable Overdue Notice', '', 'enableOverdueNotice', 'toggle');
     }
 
     /**
