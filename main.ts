@@ -541,9 +541,10 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         const showEstimateInTaskNameSetting = new Setting(this.containerEl)
             .setName("Show estimate in task name")
             .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showEstimateInTaskName).onChange(async (value) => {
-                    this.plugin.settings.showEstimateInTaskName = value;
-                    await this.updateSetting("showEstimateInTaskName", value);
+                toggle
+                    .setValue(this.plugin.settings.showEstimateInTaskName)
+                    .onChange(async (value) => {
+                        await this.updateSetting("showEstimateInTaskName", value);
                 })
             );
 
@@ -554,9 +555,10 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
         const showStartInTaskNameSetting = new Setting(this.containerEl)
             .setName("Show start time in task name")
             .addToggle((toggle) =>
-                toggle.setValue(this.plugin.settings.showStartTimeInTaskName).onChange(async (value) => {
-                    this.plugin.settings.showStartTimeInTaskName = value;
-                    await this.updateSetting("showStartInTaskName", value);
+                toggle
+                    .setValue(this.plugin.settings.showStartTimeInTaskName)
+                    .onChange(async (value) => {
+                        await this.updateSetting("showStartInTaskName", value);
                 })
             );
 
@@ -664,7 +666,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
                 toggle
                     .setValue(this.plugin.settings.showProgressBar)
                     .onChange(async value => {
-                        this.plugin.settings.showProgressBar = value;
                         await this.updateSetting("showProgressBar", value);
                         this.display();
                     })
