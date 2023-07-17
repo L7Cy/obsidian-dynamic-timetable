@@ -566,7 +566,7 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
             .setName('Header Names')
             .addText(text => {
                 const el = text.setValue(headerNames);
-                el.inputEl.style.width = '90%';
+                el.inputEl.style.width = '-webkit-fill-available';
                 el.inputEl.addEventListener('blur', async (event) => {
                     const value = (event.target as HTMLInputElement).value.split(',').map(s => s.trim());
                     await this.plugin.updateSetting("headerNames", value);
