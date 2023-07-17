@@ -192,7 +192,15 @@ class TimetableView extends ItemView {
     }
 
     async onClose(): Promise<void> {
-        // Do nothing
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = undefined;
+        }
+
+        if (this.overdueNotice) {
+            this.overdueNotice.hide();
+            this.overdueNotice = null;
+        }
     }
 
     async update() {
