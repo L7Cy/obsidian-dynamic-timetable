@@ -44,7 +44,7 @@ export default class DynamicTimetable extends Plugin {
         intervalTime: 1,
         taskEstimateDelimiter: ';',
         startTimeDelimiter: '@',
-        dateDelimiter: "^---$",
+        dateDelimiter: "",
         enableOverdueNotice: true,
         headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     };
@@ -382,18 +382,20 @@ class TaskParser {
     private estimateRegex: RegExp;
     private timeRegex: RegExp;
     private dateTimeRegex: RegExp;
+    private dateDelimiter: RegExp;
 
-    constructor(private separator: string, private startTimeDelimiter: string, private dateDelimiter: RegExp, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) {
+    constructor(private separator: string, private startTimeDelimiter: string, dateDelimiter: string, private showStartTimeInTaskName: boolean, private showEstimateInTaskName: boolean) {
         this.taskNameRegex = TaskParser.TASK_NAME_REGEX;
         this.linkRegex = TaskParser.LINK_REGEX;
         this.markdownLinkRegex = TaskParser.MARKDOWN_LINK_REGEX;
         this.estimateRegex = new RegExp(`\\${separator}\\s*\\d+\\s*`);
         this.timeRegex = new RegExp(`\\${startTimeDelimiter}\\s*(\\d{1,2}\\:?\\d{2})`);
         this.dateTimeRegex = new RegExp(`\\${startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`);
+        this.dateDelimiter = dateDelimiter ? new RegExp(dateDelimiter) : /(?!x)x/;
     }
 
     static fromSettings(settings: DynamicTimetableSettings): TaskParser {
-        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter, new RegExp(settings.dateDelimiter), settings.showStartTimeInTaskName, settings.showEstimateInTaskName);
+        return new TaskParser(settings.taskEstimateDelimiter, settings.startTimeDelimiter, settings.dateDelimiter, settings.showStartTimeInTaskName, settings.showEstimateInTaskName);
     }
 
     public filterAndParseTasks(content: string): Task[] {
