@@ -24,7 +24,7 @@ interface DynamicTimetableSettings {
 }
 
 declare module "obsidian" {
-    interface Workspace {
+    interface Workspace { // eslint-disable-next-line @typescript-eslint/no-explicit-any
         on(eventName: "layout-ready", callback: () => any, ctx?: any): EventRef;
     }
 }
@@ -116,8 +116,8 @@ export default class DynamicTimetable extends Plugin {
     }
 
     async updateOpenTimetableViews() {
-        for (let leaf of this.app.workspace.getLeavesOfType("Timetable")) {
-            let view = leaf.view;
+        for (const leaf of this.app.workspace.getLeavesOfType("Timetable")) {
+            const view = leaf.view;
             if (view instanceof TimetableView) {
                 this.checkTargetFile();
                 await view.update();
@@ -270,7 +270,7 @@ class TimetableView extends ItemView {
         let currentTime = new Date();
         let previousEndTime: Date | null = null;
 
-        for (let task of tasks) {
+        for (const task of tasks) {
             const { task: parsedTaskName, startTime, estimate } = task;
             const minutes = estimate ? parseInt(estimate) : null;
             if (startTime) {
@@ -373,8 +373,8 @@ class TimetableView extends ItemView {
 
 class TaskParser {
     private static readonly TASK_NAME_REGEX = /^[-+*]\s*\[\s*.\s*\]/;
-    private static readonly LINK_REGEX = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
-    private static readonly MARKDOWN_LINK_REGEX = /\[([^\[\]]+)\]\(.+?\)/g;
+    private static readonly LINK_REGEX = /\[\[([^[]]*\|)?([^[]]+)\]\]/g;
+    private static readonly MARKDOWN_LINK_REGEX = /\[([^[]]+)\]\(.+?\)/g;
 
     private taskNameRegex: RegExp;
     private linkRegex: RegExp;
@@ -400,7 +400,7 @@ class TaskParser {
 
     public filterAndParseTasks(content: string): Task[] {
         const lines = content.split("\n").map(line => line.trim());
-        let currentDate = new Date();
+        const currentDate = new Date();
         let nextDay = 0;
 
         const tasks = lines.flatMap(line => {
@@ -469,7 +469,7 @@ class TaskParser {
                 timeMatch[1].split(":");
             const [hours, minutes] = timeSplit.map(Number);
 
-            let startDate = new Date(currentDate.getTime());
+            const startDate = new Date(currentDate.getTime());
             startDate.setDate(startDate.getDate() + nextDay);
             startDate.setHours(hours, minutes, 0, 0);
 
