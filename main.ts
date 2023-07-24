@@ -435,8 +435,8 @@ class TimetableView extends ItemView {
 
 class TaskParser {
   private static readonly TASK_NAME_REGEX = /^[-+*]\s*\[\s*.\s*\]/;
-  private static readonly LINK_REGEX = /\[\[([^[]]*\|)?([^[]]+)\]\]/g;
-  private static readonly MARKDOWN_LINK_REGEX = /\[([^[]]+)\]\(.+?\)/g;
+  private static readonly LINK_REGEX = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
+  private static readonly MARKDOWN_LINK_REGEX = /\[([^\[\]]+)\]\(.+?\)/g;
 
   private taskNameRegex: RegExp;
   private linkRegex: RegExp;
