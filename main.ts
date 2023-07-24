@@ -101,66 +101,47 @@ export default class DynamicTimetable extends Plugin {
   }
 
   private registerCommands(): void {
-    this.addToggleTimetableCommand();
-    this.addInitTimetableCommand();
-    this.addCompleteTaskCommand();
-    this.addInterruptTaskCommand();
-  }
+    this.addCustomCommand('toggle-timetable', 'Show/Hide Timetable', () => {
+      if (this.isTimetableOpen()) {
+        this.closeTimetable();
+      } else {
+        this.openTimetable();
+      }
+    });
 
-  private addToggleTimetableCommand(): void {
-    this.addCommand({
-      id: 'toggle-timetable',
-      name: 'Show/Hide Timetable',
-      callback: () => {
-        if (this.isTimetableOpen()) {
-          this.closeTimetable();
-        } else {
-          this.openTimetable();
-        }
-      },
+    this.addCustomCommand('init-timetable', 'Initialize Timetable', () =>
+      this.initTimetableView()
+    );
+
+    this.addCustomCommand('complete-task', 'Complete Task', async () => {
+      this.checkTargetFile();
+      if (this.targetFile === null || this.taskParser === undefined) {
+        return;
+      }
+      const content = await this.app.vault.read(this.targetFile);
+      const task = this.taskParser.filterAndParseTasks(content)[0];
+      if (task && this.timetableView) {
+        await this.timetableView.completeTask(task);
+      }
+    });
+
+    this.addCustomCommand('interrupt-task', 'Interrupt Task', async () => {
+      if (this.targetFile === null) {
+        return;
+      }
+      const content = await this.app.vault.read(this.targetFile);
+      const task = this.taskParser.filterAndParseTasks(content)[0];
+      if (task && this.timetableView) {
+        await this.timetableView.interruptTask(task);
+      }
     });
   }
 
-  private addInitTimetableCommand(): void {
+  private addCustomCommand(id: string, name: string, callback: any) {
     this.addCommand({
-      id: 'init-timetable',
-      name: 'Initialize Timetable',
-      callback: () => this.initTimetableView(),
-    });
-  }
-
-  private addCompleteTaskCommand(): void {
-    this.addCommand({
-      id: 'complete-task',
-      name: 'Complete Task',
-      callback: async () => {
-        this.checkTargetFile();
-        if (this.targetFile === null || this.taskParser === undefined) {
-          return;
-        }
-        const content = await this.app.vault.read(this.targetFile);
-        const task = this.taskParser.filterAndParseTasks(content)[0];
-        if (task && this.timetableView) {
-          await this.timetableView.completeTask(this, task);
-        }
-      },
-    });
-  }
-
-  private addInterruptTaskCommand(): void {
-    this.addCommand({
-      id: 'interrupt-task',
-      name: 'Interrupt Task',
-      callback: async () => {
-        if (this.targetFile === null) {
-          return;
-        }
-        const content = await this.app.vault.read(this.targetFile);
-        const task = this.taskParser.filterAndParseTasks(content)[0];
-        if (task && this.timetableView) {
-          await this.timetableView.interruptTask(this, task);
-        }
-      },
+      id: id,
+      name: name,
+      callback: callback,
     });
   }
 
@@ -212,19 +193,12 @@ export default class DynamicTimetable extends Plugin {
 }
 
 class TimetableView extends ItemView {
-  private taskParser: TaskParser;
   private intervalId: ReturnType<typeof setInterval> | undefined;
   private overdueNotice: Notice | null = null;
 
-  private static readonly MILLISECONDS_IN_MINUTE = 60000;
-  private static readonly LATE_CLASS = 'late';
-  private static readonly ON_TIME_CLASS = 'on-time';
-  private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
-  private static readonly BUFFER_TIME_NAME = 'Buffer Time';
-  private static readonly PROGRESS_BAR_CLASS = 'dt-progress-bar';
-  private static readonly PROGRESS_BAR_OVERDUE_CLASS =
-    'dt-progress-bar-overdue';
-  private static readonly INIT_BUTTON_TEXT = 'Init';
+  private taskManager: TaskManager;
+  private tableRenderer: TableRenderer;
+  private progressBarManager: ProgressBarManager;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -232,6 +206,10 @@ class TimetableView extends ItemView {
   ) {
     super(leaf);
     this.containerEl.addClass('Timetable');
+
+    this.taskManager = new TaskManager(plugin);
+    this.tableRenderer = new TableRenderer(plugin, this.containerEl);
+    this.progressBarManager = new ProgressBarManager(plugin, this.containerEl);
 
     plugin.registerEvent(
       this.app.vault.on('modify', async (file) => {
@@ -270,16 +248,15 @@ class TimetableView extends ItemView {
     if (!this.plugin.targetFile) {
       return;
     }
-    const content = await this.app.vault.cachedRead(this.plugin.targetFile);
-    this.taskParser = TaskParser.fromSettings(this.plugin.settings);
-    let tasks = this.taskParser.filterAndParseTasks(content);
+    let tasks = await this.taskManager.initializeTasks();
+    await this.tableRenderer.renderTable(tasks);
+    this.setupInterval(tasks);
+  }
 
-    if (tasks.length > 0 && tasks[0].startTime === null) {
-      tasks[0].startTime = new Date(this.plugin.targetFile.stat.mtime);
+  setupInterval(tasks: Task[]) {
+    if (tasks.length === 0) {
+      return;
     }
-
-    const topTaskEstimate = tasks[0] ? Number(tasks[0].estimate) * 60 || 0 : 0;
-    await this.renderTable(tasks);
     if (this.intervalId) {
       clearInterval(this.intervalId);
       if (this.overdueNotice) {
@@ -293,18 +270,162 @@ class TimetableView extends ItemView {
         topTask && topTask.startTime
           ? (new Date().getTime() - topTask.startTime.getTime()) / 1000
           : 0;
-      this.createOrUpdateProgressBar(duration, topTaskEstimate);
+      const topTaskEstimate = Number(topTask.estimate) * 60 || 0;
+      this.progressBarManager.createOrUpdateProgressBar(
+        duration,
+        topTaskEstimate
+      );
     }, this.plugin.settings.intervalTime * 1000);
   }
 
-  async renderTable(tasks: Task[]): Promise<void> {
-    const { contentEl } = this;
-    contentEl.empty();
+  async completeTask(task: Task): Promise<void> {
+    await this.taskManager.completeTask(task);
+    this.update();
+  }
 
-    if (this.plugin.settings.showProgressBar) {
-      this.createOrUpdateProgressBar(0, 0);
+  async interruptTask(task: Task): Promise<void> {
+    await this.taskManager.interruptTask(task);
+    this.update();
+  }
+}
+
+class TaskManager {
+  private taskParser: TaskParser;
+  private plugin: DynamicTimetable;
+
+  constructor(plugin: DynamicTimetable) {
+    this.plugin = plugin;
+  }
+
+  async initializeTasks() {
+    if (!this.plugin.targetFile) {
+      return [];
+    }
+    const content = await this.plugin.app.vault.cachedRead(
+      this.plugin.targetFile
+    );
+    this.taskParser = TaskParser.fromSettings(this.plugin.settings);
+    let tasks = this.taskParser.filterAndParseTasks(content);
+
+    if (tasks.length > 0 && tasks[0].startTime === null) {
+      tasks[0].startTime = new Date(this.plugin.targetFile.stat.mtime);
+    }
+    return tasks;
+  }
+
+  async completeTask(task: Task): Promise<void> {
+    console.log('completeTask called with task:', task);
+    if (!this.plugin.targetFile || !task.estimate) {
+      return;
     }
 
+    let content = await this.plugin.app.vault.cachedRead(
+      this.plugin.targetFile
+    );
+    let elapsedTime = this.getElapsedTime(task);
+    content = this.updateTaskInContent(content, task, elapsedTime);
+
+    await this.plugin.app.vault.modify(this.plugin.targetFile, content);
+  }
+
+  async interruptTask(task: Task): Promise<void> {
+    console.log('interruptTask called with task:', task);
+    if (!this.plugin.targetFile || !task.estimate) {
+      return;
+    }
+
+    let content = await this.plugin.app.vault.cachedRead(
+      this.plugin.targetFile
+    );
+    let elapsedTime = this.getElapsedTime(task);
+    let remainingTime = Math.floor(parseFloat(task.estimate) - elapsedTime);
+    content = this.updateTaskInContent(
+      content,
+      task,
+      elapsedTime,
+      remainingTime
+    );
+
+    await this.plugin.app.vault.modify(this.plugin.targetFile, content);
+  }
+
+  private getElapsedTime(task: Task): number {
+    if (!task.startTime && this.plugin.targetFile) {
+      task.startTime = new Date(this.plugin.targetFile.stat.mtime);
+    }
+    let elapsedTime = task.startTime
+      ? (new Date().getTime() - task.startTime.getTime()) / 60000
+      : 0;
+    return Math.floor(elapsedTime);
+  }
+
+  private updateTaskInContent(
+    content: string,
+    task: Task,
+    elapsedTime: number,
+    remainingTime?: number
+  ): string {
+    const taskRegex = new RegExp(
+      `^- \\[ \\] ${task.task.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}\\s*${task.estimate}$`,
+      'm'
+    );
+
+    const lines = content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (taskRegex.test(lines[i])) {
+        let newTaskLine = `- [x] ${task.task} ${
+          this.plugin.settings.taskEstimateDelimiter
+        } ${elapsedTime.toFixed(0)}`;
+        if (remainingTime !== undefined) {
+          newTaskLine += `\n- [ ] ${task.task} ${
+            this.plugin.settings.taskEstimateDelimiter
+          } ${remainingTime.toFixed(0)}`;
+        }
+        lines[i] = newTaskLine;
+        break;
+      }
+    }
+    return lines.join('\n');
+  }
+}
+
+class TableRenderer {
+  private static readonly MILLISECONDS_IN_MINUTE = 60000;
+  private static readonly LATE_CLASS = 'late';
+  private static readonly ON_TIME_CLASS = 'on-time';
+  private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
+  private static readonly BUFFER_TIME_NAME = 'Buffer Time';
+  private static readonly INIT_BUTTON_TEXT = 'Init';
+
+  private plugin: DynamicTimetable;
+  private contentEl: HTMLElement;
+  private progressBarManager: ProgressBarManager;
+
+  constructor(plugin: DynamicTimetable, contentEl: HTMLElement) {
+    this.plugin = plugin;
+    this.contentEl = contentEl;
+    this.contentEl.classList.add('dt-content');
+    this.progressBarManager = new ProgressBarManager(plugin, contentEl);
+  }
+
+  async renderTable(tasks: Task[]): Promise<void> {
+    this.contentEl.empty();
+    if (this.plugin.settings.showProgressBar) {
+      this.progressBarManager.createOrUpdateProgressBar(0, 0);
+    }
+    const initButton = this.createButton();
+    const scheduleTable = this.initializeTable(tasks);
+    this.contentEl.appendChild(initButton);
+    this.contentEl.appendChild(scheduleTable);
+  }
+
+  initializeTable(tasks: Task[]) {
     const scheduleTable = this.createTable();
     const tableHead = scheduleTable.createTHead();
     const tableBody = scheduleTable.createTBody();
@@ -312,13 +433,24 @@ class TimetableView extends ItemView {
     tableHead.appendChild(this.createTableHeader());
     this.appendTableBodyRows(tableBody, tasks);
 
-    const initButton = this.createInitButton();
-    contentEl.appendChild(initButton);
-    contentEl.appendChild(scheduleTable);
+    return scheduleTable;
+  }
+
+  createButton() {
+    const initButton = this.contentEl.createEl('button', {
+      text: TableRenderer.INIT_BUTTON_TEXT,
+    });
+    initButton.addEventListener('click', async () => {
+      await this.plugin.initTimetableView();
+      new Notice('Timetable initialized!');
+    });
+    return initButton;
   }
 
   private createTable(): HTMLTableElement {
-    return this.contentEl.createEl('table');
+    const table = this.contentEl.createEl('table');
+    table.classList.add('dt-table');
+    return table;
   }
 
   private createTableHeader(): HTMLTableRowElement {
@@ -362,22 +494,22 @@ class TimetableView extends ItemView {
       const endTime = minutes
         ? new Date(
             currentTime.getTime() +
-              minutes * TimetableView.MILLISECONDS_IN_MINUTE
+              minutes * TableRenderer.MILLISECONDS_IN_MINUTE
           )
         : null;
 
       if (this.plugin.settings.showBufferTime && startTime && previousEndTime) {
         const bufferMinutes = Math.floor(
           (new Date(startTime).getTime() - previousEndTime.getTime()) /
-            TimetableView.MILLISECONDS_IN_MINUTE
+            TableRenderer.MILLISECONDS_IN_MINUTE
         );
         tableBody.appendChild(this.createBufferRow(bufferMinutes));
       }
 
       const rowClass = startTime
         ? previousEndTime && new Date(startTime) < previousEndTime
-          ? TimetableView.LATE_CLASS
-          : TimetableView.ON_TIME_CLASS
+          ? TableRenderer.LATE_CLASS
+          : TableRenderer.ON_TIME_CLASS
         : null;
 
       const tableRowValues = [parsedTaskName];
@@ -425,8 +557,8 @@ class TimetableView extends ItemView {
 
   private createBufferRow(bufferMinutes: number): HTMLTableRowElement {
     const bufferRow = document.createElement('tr');
-    bufferRow.classList.add(TimetableView.BUFFER_TIME_CLASS);
-    const bufferNameCell = this.createTableCell(TimetableView.BUFFER_TIME_NAME);
+    bufferRow.classList.add(TableRenderer.BUFFER_TIME_CLASS);
+    const bufferNameCell = this.createTableCell(TableRenderer.BUFFER_TIME_NAME);
     bufferRow.appendChild(bufferNameCell);
     const bufferTimeCell = document.createElement('td');
     bufferTimeCell.textContent = `${bufferMinutes}m`;
@@ -442,37 +574,44 @@ class TimetableView extends ItemView {
       hour12: false,
     }).format(date);
   }
+}
 
-  private createInitButton(): HTMLButtonElement {
-    const initButton = this.contentEl.createEl('button', {
-      text: TimetableView.INIT_BUTTON_TEXT,
-    });
-    initButton.addEventListener('click', async () => {
-      await this.plugin.initTimetableView();
-      new Notice('Timetable initialized!');
-    });
-    return initButton;
+class ProgressBarManager {
+  private overdueNotice: Notice | null = null;
+  private static readonly PROGRESS_BAR_CLASS = 'dt-progress-bar';
+  private static readonly PROGRESS_BAR_OVERDUE_CLASS =
+    'dt-progress-bar-overdue';
+
+  private plugin: DynamicTimetable;
+  private contentEl: HTMLElement;
+
+  constructor(plugin: DynamicTimetable, contentEl: HTMLElement) {
+    this.plugin = plugin;
+    this.contentEl = contentEl;
   }
 
-  private createOrUpdateProgressBar(duration: number, estimate: number): void {
+  createOrUpdateProgressBar(duration: number, estimate: number): void {
     let progressBar = this.contentEl.querySelector(
-      '.' + TimetableView.PROGRESS_BAR_CLASS
+      '.' + ProgressBarManager.PROGRESS_BAR_CLASS
     ) as HTMLElement;
     if (!progressBar) {
       progressBar = this.contentEl.createEl('div');
-      progressBar.addClass(TimetableView.PROGRESS_BAR_CLASS);
+      progressBar.addClass(ProgressBarManager.PROGRESS_BAR_CLASS);
     }
     const width = Math.min((duration / estimate) * 100, 100);
+    this.updateProgressBarStyle(progressBar, width);
+  }
+
+  private updateProgressBarStyle(
+    progressBar: HTMLElement,
+    width: number
+  ): void {
     progressBar.style.width = width + '%';
-    if (
-      width === 100 &&
-      !this.overdueNotice &&
-      this.plugin.settings.enableOverdueNotice
-    ) {
-      progressBar.addClass(TimetableView.PROGRESS_BAR_OVERDUE_CLASS);
-      this.overdueNotice = new Notice('Are you finished?', 0);
-    } else if (width < 100) {
-      progressBar.removeClass(TimetableView.PROGRESS_BAR_OVERDUE_CLASS);
+    if (width === 100) {
+      progressBar.addClass(ProgressBarManager.PROGRESS_BAR_OVERDUE_CLASS);
+      this.createNotice();
+    } else {
+      progressBar.removeClass(ProgressBarManager.PROGRESS_BAR_OVERDUE_CLASS);
       if (this.overdueNotice) {
         this.overdueNotice.hide();
         this.overdueNotice = null;
@@ -480,106 +619,10 @@ class TimetableView extends ItemView {
     }
   }
 
-  async completeTask(
-    dynamicTimetable: DynamicTimetable,
-    task: Task
-  ): Promise<void> {
-    console.log('completeTask called with task:', task);
-    if (!dynamicTimetable.targetFile || !task.estimate) {
-      return;
+  private createNotice(): void {
+    if (!this.overdueNotice && this.plugin.settings.enableOverdueNotice) {
+      this.overdueNotice = new Notice('Are you finished?', 0);
     }
-
-    let content = await dynamicTimetable.app.vault.cachedRead(
-      dynamicTimetable.targetFile
-    );
-
-    if (!task.startTime) {
-      task.startTime = new Date(dynamicTimetable.targetFile.stat.mtime);
-    }
-    let elapsedTime = (new Date().getTime() - task.startTime.getTime()) / 60000;
-    elapsedTime = Math.floor(elapsedTime);
-
-    const taskRegex = new RegExp(
-      `^- \\[ \\] ${task.task.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        '\\$&'
-      )}\\s*${dynamicTimetable.settings.taskEstimateDelimiter.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        '\\$&'
-      )}\\s*${task.estimate}$`,
-      'm'
-    );
-
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      if (taskRegex.test(lines[i])) {
-        lines[i] = `- [x] ${task.task} ${
-          dynamicTimetable.settings.taskEstimateDelimiter
-        } ${elapsedTime.toFixed(0)}`;
-        break;
-      }
-    }
-    content = lines.join('\n');
-
-    await dynamicTimetable.app.vault.modify(
-      dynamicTimetable.targetFile,
-      content
-    );
-
-    dynamicTimetable.updateOpenTimetableViews();
-  }
-
-  async interruptTask(
-    dynamicTimetable: DynamicTimetable,
-    task: Task
-  ): Promise<void> {
-    console.log('interruptTask called with task:', task);
-    if (!dynamicTimetable.targetFile || !task.estimate) {
-      return;
-    }
-    if (!task.startTime) {
-      task.startTime = new Date(dynamicTimetable.targetFile.stat.mtime);
-    }
-
-    let content = await dynamicTimetable.app.vault.cachedRead(
-      dynamicTimetable.targetFile
-    );
-
-    let elapsedTime = (new Date().getTime() - task.startTime.getTime()) / 60000;
-    elapsedTime = Math.floor(elapsedTime);
-    let remainingTime = parseFloat(task.estimate) - elapsedTime;
-    remainingTime = Math.floor(remainingTime);
-
-    const taskRegex = new RegExp(
-      `^- \\[ \\] ${task.task.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        '\\$&'
-      )}\\s*${dynamicTimetable.settings.taskEstimateDelimiter.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        '\\$&'
-      )}\\s*${task.estimate}$`,
-      'm'
-    );
-
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      if (taskRegex.test(lines[i])) {
-        lines[i] = `- [x] ${task.task} ${
-          dynamicTimetable.settings.taskEstimateDelimiter
-        } ${elapsedTime.toFixed(0)}\n- [ ] ${task.task} ${
-          dynamicTimetable.settings.taskEstimateDelimiter
-        } ${remainingTime.toFixed(0)}`;
-        break;
-      }
-    }
-    content = lines.join('\n');
-
-    await dynamicTimetable.app.vault.modify(
-      dynamicTimetable.targetFile,
-      content
-    );
-
-    dynamicTimetable.updateOpenTimetableViews();
   }
 }
 
