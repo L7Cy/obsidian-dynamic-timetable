@@ -13,6 +13,7 @@ interface Task {
   task: string;
   startTime: Date | null;
   estimate: string | null;
+  isChecked: boolean;
 }
 
 interface DynamicTimetableSettings {
@@ -42,6 +43,8 @@ declare module 'obsidian' {
 export default class DynamicTimetable extends Plugin {
   settings: DynamicTimetableSettings;
   targetFile: TFile | null = null;
+  taskParser: TaskParser;
+  timetableView: TimetableView | null = null;
 
   static DEFAULT_SETTINGS: DynamicTimetableSettings = {
     filePath: null,
@@ -67,12 +70,12 @@ export default class DynamicTimetable extends Plugin {
       ...(await this.loadData()),
     };
     this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
+    this.taskParser = TaskParser.fromSettings(this.settings);
 
-    this.registerCommands();
-    this.registerView(
-      'Timetable',
-      (leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
-    );
+    this.registerView('Timetable', (leaf: WorkspaceLeaf) => {
+      this.timetableView = new TimetableView(leaf, this);
+      return this.timetableView;
+    });
 
     if (this.app.workspace.layoutReady) {
       this.initTimetableView();
@@ -81,6 +84,7 @@ export default class DynamicTimetable extends Plugin {
         this.app.workspace.on('layout-ready', this.initTimetableView.bind(this))
       );
     }
+    this.registerCommands();
   }
 
   onunload(): void {
@@ -99,6 +103,8 @@ export default class DynamicTimetable extends Plugin {
   private registerCommands(): void {
     this.addToggleTimetableCommand();
     this.addInitTimetableCommand();
+    this.addCompleteTaskCommand();
+    this.addInterruptTaskCommand();
   }
 
   private addToggleTimetableCommand(): void {
@@ -120,6 +126,41 @@ export default class DynamicTimetable extends Plugin {
       id: 'init-timetable',
       name: 'Initialize Timetable',
       callback: () => this.initTimetableView(),
+    });
+  }
+
+  private addCompleteTaskCommand(): void {
+    this.addCommand({
+      id: 'complete-task',
+      name: 'Complete Task',
+      callback: async () => {
+        this.checkTargetFile();
+        if (this.targetFile === null || this.taskParser === undefined) {
+          return;
+        }
+        const content = await this.app.vault.read(this.targetFile);
+        const task = this.taskParser.filterAndParseTasks(content)[0];
+        if (task && this.timetableView) {
+          await this.timetableView.completeTask(this, task);
+        }
+      },
+    });
+  }
+
+  private addInterruptTaskCommand(): void {
+    this.addCommand({
+      id: 'interrupt-task',
+      name: 'Interrupt Task',
+      callback: async () => {
+        if (this.targetFile === null) {
+          return;
+        }
+        const content = await this.app.vault.read(this.targetFile);
+        const task = this.taskParser.filterAndParseTasks(content)[0];
+        if (task && this.timetableView) {
+          await this.timetableView.interruptTask(this, task);
+        }
+      },
     });
   }
 
@@ -231,7 +272,12 @@ class TimetableView extends ItemView {
     }
     const content = await this.app.vault.cachedRead(this.plugin.targetFile);
     this.taskParser = TaskParser.fromSettings(this.plugin.settings);
-    const tasks = this.taskParser.filterAndParseTasks(content);
+    let tasks = this.taskParser.filterAndParseTasks(content);
+
+    if (tasks.length > 0 && tasks[0].startTime === null) {
+      tasks[0].startTime = new Date(this.plugin.targetFile.stat.mtime);
+    }
+
     const topTaskEstimate = tasks[0] ? Number(tasks[0].estimate) * 60 || 0 : 0;
     await this.renderTable(tasks);
     if (this.intervalId) {
@@ -242,9 +288,11 @@ class TimetableView extends ItemView {
       }
     }
     this.intervalId = setInterval(() => {
-      const duration = this.plugin.targetFile
-        ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000
-        : 0;
+      const topTask = tasks[0];
+      const duration =
+        topTask && topTask.startTime
+          ? (new Date().getTime() - topTask.startTime.getTime()) / 1000
+          : 0;
       this.createOrUpdateProgressBar(duration, topTaskEstimate);
     }, this.plugin.settings.intervalTime * 1000);
   }
@@ -431,6 +479,108 @@ class TimetableView extends ItemView {
       }
     }
   }
+
+  async completeTask(
+    dynamicTimetable: DynamicTimetable,
+    task: Task
+  ): Promise<void> {
+    console.log('completeTask called with task:', task);
+    if (!dynamicTimetable.targetFile || !task.estimate) {
+      return;
+    }
+
+    let content = await dynamicTimetable.app.vault.cachedRead(
+      dynamicTimetable.targetFile
+    );
+
+    if (!task.startTime) {
+      task.startTime = new Date(dynamicTimetable.targetFile.stat.mtime);
+    }
+    let elapsedTime = (new Date().getTime() - task.startTime.getTime()) / 60000;
+    elapsedTime = Math.floor(elapsedTime);
+
+    const taskRegex = new RegExp(
+      `^- \\[ \\] ${task.task.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}\\s*${dynamicTimetable.settings.taskEstimateDelimiter.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}\\s*${task.estimate}$`,
+      'm'
+    );
+
+    const lines = content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (taskRegex.test(lines[i])) {
+        lines[i] = `- [x] ${task.task} ${
+          dynamicTimetable.settings.taskEstimateDelimiter
+        } ${elapsedTime.toFixed(0)}`;
+        break;
+      }
+    }
+    content = lines.join('\n');
+
+    await dynamicTimetable.app.vault.modify(
+      dynamicTimetable.targetFile,
+      content
+    );
+
+    dynamicTimetable.updateOpenTimetableViews();
+  }
+
+  async interruptTask(
+    dynamicTimetable: DynamicTimetable,
+    task: Task
+  ): Promise<void> {
+    console.log('interruptTask called with task:', task);
+    if (!dynamicTimetable.targetFile || !task.estimate) {
+      return;
+    }
+    if (!task.startTime) {
+      task.startTime = new Date(dynamicTimetable.targetFile.stat.mtime);
+    }
+
+    let content = await dynamicTimetable.app.vault.cachedRead(
+      dynamicTimetable.targetFile
+    );
+
+    let elapsedTime = (new Date().getTime() - task.startTime.getTime()) / 60000;
+    elapsedTime = Math.floor(elapsedTime);
+    let remainingTime = parseFloat(task.estimate) - elapsedTime;
+    remainingTime = Math.floor(remainingTime);
+
+    const taskRegex = new RegExp(
+      `^- \\[ \\] ${task.task.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}\\s*${dynamicTimetable.settings.taskEstimateDelimiter.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}\\s*${task.estimate}$`,
+      'm'
+    );
+
+    const lines = content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (taskRegex.test(lines[i])) {
+        lines[i] = `- [x] ${task.task} ${
+          dynamicTimetable.settings.taskEstimateDelimiter
+        } ${elapsedTime.toFixed(0)}\n- [ ] ${task.task} ${
+          dynamicTimetable.settings.taskEstimateDelimiter
+        } ${remainingTime.toFixed(0)}`;
+        break;
+      }
+    }
+    content = lines.join('\n');
+
+    await dynamicTimetable.app.vault.modify(
+      dynamicTimetable.targetFile,
+      content
+    );
+
+    dynamicTimetable.updateOpenTimetableViews();
+  }
 }
 
 class TaskParser {
@@ -476,6 +626,16 @@ class TaskParser {
     );
   }
 
+  public getTopUncompletedTask(content: string): Task | null {
+    const tasks = this.filterAndParseTasks(content);
+    for (const task of tasks) {
+      if (!task.isChecked) {
+        return task;
+      }
+    }
+    return null;
+  }
+
   public filterAndParseTasks(content: string): Task[] {
     const lines = content.split('\n').map((line) => line.trim());
     const currentDate = new Date();
@@ -505,11 +665,16 @@ class TaskParser {
       const taskName = this.parseTaskName(line);
       const startTime = this.parseStartTime(line, currentDate, nextDay);
       const estimate = this.parseEstimate(line);
+      const isChecked =
+        line.startsWith('- [x]') ||
+        line.startsWith('+ [x]') ||
+        line.startsWith('* [x]');
 
       return {
         task: taskName,
         startTime: startTime,
         estimate: estimate,
+        isChecked: isChecked,
       };
     });
 
