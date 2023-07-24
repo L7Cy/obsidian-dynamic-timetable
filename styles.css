@@ -21,3 +21,12 @@
 .dt-progress-bar-overdue {
     background-color: #e55a16;
 }
+
+.dt-table {
+    padding: 10px;
+}
+
+.dt-content {
+    display: block;
+    overflow: auto;
+}
