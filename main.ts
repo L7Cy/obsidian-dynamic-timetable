@@ -444,9 +444,9 @@ class TableRenderer {
   private static readonly COMPLETED_CLASS = 'completed';
   private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
   private static readonly BUFFER_TIME_NAME = 'Buffer Time';
-  private static readonly COMPLETE_BUTTON_TEXT = '✅ Complete';
-  private static readonly INTERRUPT_BUTTON_TEXT = '⏹️ Interrupt';
-  private static readonly INIT_BUTTON_TEXT = '🔄 Initialize';
+  private static readonly COMPLETE_BUTTON_TEXT = '✅';
+  private static readonly INTERRUPT_BUTTON_TEXT = '⏹️';
+  private static readonly INIT_BUTTON_TEXT = '🔄';
 
   private plugin: DynamicTimetable;
   private contentEl: HTMLElement;
