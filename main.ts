@@ -629,8 +629,12 @@ class TableRenderer {
           (new Date(taskStartTime).getTime() - compareTime.getTime()) /
             TableRenderer.MILLISECONDS_IN_MINUTE
         );
-        const bufferRow = this.createBufferRow(bufferMinutes);
-        uncompletedTaskRows.push(bufferRow);
+        if (!hasFoundFirstUncompletedTask && bufferMinutes <= 0) {
+          bufferMinutes = null;
+        } else {
+          const bufferRow = this.createBufferRow(bufferMinutes);
+          uncompletedTaskRows.push(bufferRow);
+        }
       }
       if (isChecked && showCompletedTasks) {
         if (minutes !== null) {
