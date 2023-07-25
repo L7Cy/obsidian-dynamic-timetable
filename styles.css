@@ -1,32 +1,39 @@
-.on-time td, .late td { vertical-align: text-top; }
+.on-time td,
+.late td {
+  vertical-align: text-top;
+}
 
 .late {
-    background-color: rgba(255, 0, 0, 0.3);
+  background-color: rgba(255, 0, 0, 0.3);
 }
 
 .on-time {
-    background-color: rgba(0, 255, 0, 0.3);
+  background-color: rgba(0, 255, 0, 0.3);
+}
+
+.completed {
+  color: rgba(0, 0, 0, 0.3);
 }
 
 .dt-buffer-time {
-    background-color: rgba(128, 128, 128, 0.3);
+  background-color: rgba(128, 128, 128, 0.3);
 }
 
 .dt-progress-bar {
-    height: 10px;
-    width: 0;
-    background-color: #4CAF50;
+  height: 10px;
+  width: 0;
+  background-color: #4caf50;
 }
 
 .dt-progress-bar-overdue {
-    background-color: #e55a16;
+  background-color: #e55a16;
 }
 
 .dt-table {
-    padding: 10px;
+  padding: 10px;
 }
 
 .dt-content {
-    display: block;
-    overflow: auto;
+  display: block;
+  overflow: auto;
 }

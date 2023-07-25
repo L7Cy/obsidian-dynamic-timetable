@@ -30,6 +30,7 @@ interface DynamicTimetableSettings {
   headerNames: string[];
   dateDelimiter: string;
   enableOverdueNotice: boolean;
+  showCompletedTasks: boolean;
   [key: string]: string | boolean | string[] | number | null | undefined;
 }
 
@@ -60,6 +61,7 @@ export default class DynamicTimetable extends Plugin {
     dateDelimiter: '',
     enableOverdueNotice: true,
     headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
+    showCompletedTasks: false,
   };
 
   async onload() {
@@ -267,8 +269,8 @@ class TimetableView extends ItemView {
     this.intervalId = setInterval(() => {
       const topTask = tasks[0];
       const duration =
-        topTask && topTask.startTime
-          ? (new Date().getTime() - topTask.startTime.getTime()) / 1000
+        topTask && this.plugin.targetFile
+          ? (new Date().getTime() - this.plugin.targetFile?.stat.mtime) / 1000
           : 0;
       const topTaskEstimate = Number(topTask.estimate) * 60 || 0;
       this.progressBarManager.createOrUpdateProgressBar(
@@ -338,7 +340,10 @@ class TaskManager {
       this.plugin.targetFile
     );
     let elapsedTime = this.getElapsedTime(task);
-    let remainingTime = Math.floor(parseFloat(task.estimate) - elapsedTime);
+    let remainingTime = Math.max(
+      0,
+      Math.floor(parseFloat(task.estimate) - elapsedTime)
+    );
     content = this.updateTaskInContent(
       content,
       task,
@@ -350,7 +355,7 @@ class TaskManager {
   }
 
   private getElapsedTime(task: Task): number {
-    if (!task.startTime && this.plugin.targetFile) {
+    if (this.plugin.targetFile) {
       task.startTime = new Date(this.plugin.targetFile.stat.mtime);
     }
     let elapsedTime = task.startTime
@@ -365,25 +370,43 @@ class TaskManager {
     elapsedTime: number,
     remainingTime?: number
   ): string {
+    const taskName = task.task.replace(
+      new RegExp(`\\s*@\\s*\\d{1,2}:\\d{2}\\s*$`),
+      ''
+    );
+
+    const startTime = task.task.match(
+      new RegExp(`\\s*@\\s*(\\d{1,2}:\\d{2})\\s*$`)
+    );
+
+    const actualStartTime = startTime
+      ? new Date(
+          Date.now() - elapsedTime * TableRenderer.MILLISECONDS_IN_MINUTE
+        )
+      : null;
+
     const taskRegex = new RegExp(
-      `^- \\[ \\] ${task.task.replace(
+      `^- \\[ \\] ${taskName.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
-      )}\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
+      )}(\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
-      )}\\s*${task.estimate}$`,
+      )}\\s*${task.estimate}|\\s*@\\s*\\d{1,2}:\\d{2})`,
       'm'
     );
 
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       if (taskRegex.test(lines[i])) {
-        let newTaskLine = `- [x] ${task.task} ${
+        let newTaskLine = `- [x] ${taskName} ${
           this.plugin.settings.taskEstimateDelimiter
         } ${elapsedTime.toFixed(0)}`;
+        if (actualStartTime) {
+          newTaskLine += ` @ ${this.formatTime(actualStartTime)}`;
+        }
         if (remainingTime !== undefined) {
-          newTaskLine += `\n- [ ] ${task.task} ${
+          newTaskLine += `\n- [ ] ${taskName} ${
             this.plugin.settings.taskEstimateDelimiter
           } ${remainingTime.toFixed(0)}`;
         }
@@ -393,12 +416,21 @@ class TaskManager {
     }
     return lines.join('\n');
   }
+
+  private formatTime(date: Date): string {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}`;
+  }
 }
 
 class TableRenderer {
-  private static readonly MILLISECONDS_IN_MINUTE = 60000;
+  public static readonly MILLISECONDS_IN_MINUTE = 60000;
   private static readonly LATE_CLASS = 'late';
   private static readonly ON_TIME_CLASS = 'on-time';
+  private static readonly COMPLETED_CLASS = 'completed';
   private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
   private static readonly BUFFER_TIME_NAME = 'Buffer Time';
   private static readonly INIT_BUTTON_TEXT = 'Init';
@@ -477,60 +509,172 @@ class TableRenderer {
     tableBody: HTMLTableSectionElement,
     tasks: Task[]
   ): void {
-    const { showEstimate, showStartTime } = this.plugin.settings;
+    const { showEstimate, showStartTime, showCompletedTasks } =
+      this.plugin.settings;
 
     let currentTime = new Date();
     let previousEndTime: Date | null = null;
+    let completedTaskRows: HTMLTableRowElement[] = [];
+    let uncompletedTaskRows: HTMLTableRowElement[] = [];
+    let hasFoundFirstUncompletedTask = false;
 
     for (const task of tasks) {
-      const { task: parsedTaskName, startTime, estimate } = task;
-      const minutes = estimate ? parseInt(estimate) : null;
-      if (startTime) {
-        currentTime = new Date(startTime);
-      } else if (previousEndTime) {
-        currentTime = previousEndTime;
-      }
+      const {
+        task: parsedTaskName,
+        estimate,
+        startTime: taskStartTime,
+        isChecked,
+      } = task;
+      const minutes =
+        estimate !== null && estimate !== undefined ? parseInt(estimate) : null;
+      let startTime: Date | null =
+        !isChecked && !hasFoundFirstUncompletedTask
+          ? currentTime
+          : taskStartTime
+          ? new Date(taskStartTime)
+          : null;
+      let endTime: Date | null = null;
+      let bufferMinutes = null;
 
-      const endTime = minutes
-        ? new Date(
-            currentTime.getTime() +
-              minutes * TableRenderer.MILLISECONDS_IN_MINUTE
-          )
-        : null;
-
-      if (this.plugin.settings.showBufferTime && startTime && previousEndTime) {
-        const bufferMinutes = Math.floor(
-          (new Date(startTime).getTime() - previousEndTime.getTime()) /
+      if (
+        this.plugin.settings.showBufferTime &&
+        taskStartTime &&
+        (!hasFoundFirstUncompletedTask || previousEndTime) &&
+        !isChecked &&
+        hasFoundFirstUncompletedTask
+      ) {
+        const compareTime = hasFoundFirstUncompletedTask
+          ? previousEndTime
+          : currentTime;
+        if (!compareTime) return;
+        bufferMinutes = Math.ceil(
+          (new Date(taskStartTime).getTime() - compareTime.getTime()) /
             TableRenderer.MILLISECONDS_IN_MINUTE
         );
-        tableBody.appendChild(this.createBufferRow(bufferMinutes));
+        const bufferRow = this.createBufferRow(bufferMinutes);
+        uncompletedTaskRows.push(bufferRow);
+      }
+      if (isChecked && showCompletedTasks) {
+        if (minutes !== null) {
+          if (!startTime) {
+            startTime = new Date(
+              currentTime.getTime() -
+                minutes * TableRenderer.MILLISECONDS_IN_MINUTE
+            );
+          }
+          endTime = currentTime;
+        }
+
+        const row = this.createTaskRow(
+          parsedTaskName,
+          minutes,
+          startTime,
+          endTime,
+          taskStartTime,
+          bufferMinutes,
+          showEstimate,
+          showStartTime,
+          isChecked,
+          hasFoundFirstUncompletedTask
+        );
+        completedTaskRows.push(row);
+
+        currentTime = startTime!;
+        continue;
       }
 
-      const rowClass = startTime
-        ? previousEndTime && new Date(startTime) < previousEndTime
-          ? TableRenderer.LATE_CLASS
-          : TableRenderer.ON_TIME_CLASS
-        : null;
+      if (!hasFoundFirstUncompletedTask) {
+        currentTime = new Date();
 
-      const tableRowValues = [parsedTaskName];
-      if (showEstimate && estimate) {
-        tableRowValues.push(`${estimate}m`);
+        startTime = startTime || currentTime;
+        if (minutes !== null) {
+          endTime = new Date(
+            startTime.getTime() + minutes * TableRenderer.MILLISECONDS_IN_MINUTE
+          );
+        }
+      } else {
+        if (minutes !== null && previousEndTime) {
+          startTime = startTime || previousEndTime;
+          endTime = new Date(
+            startTime.getTime() + minutes * TableRenderer.MILLISECONDS_IN_MINUTE
+          );
+        }
       }
-      if (showStartTime) {
-        tableRowValues.push(this.formatTime(currentTime));
-      }
-      if (endTime) {
-        tableRowValues.push(this.formatTime(endTime));
-      }
-      tableBody.appendChild(
-        this.createTableRow(tableRowValues, false, rowClass)
-      );
 
-      if (endTime) {
+      if (!isChecked || (isChecked && showCompletedTasks)) {
+        if (startTime && endTime) {
+          const row = this.createTaskRow(
+            parsedTaskName,
+            minutes,
+            startTime,
+            endTime,
+            taskStartTime,
+            bufferMinutes,
+            showEstimate,
+            showStartTime,
+            isChecked,
+            hasFoundFirstUncompletedTask
+          );
+          uncompletedTaskRows.push(row);
+        }
+        if (!hasFoundFirstUncompletedTask) {
+          hasFoundFirstUncompletedTask = true;
+        }
         previousEndTime = endTime;
-        currentTime = endTime;
       }
     }
+
+    completedTaskRows.reverse().forEach((row) => tableBody.appendChild(row));
+
+    uncompletedTaskRows.forEach((row) => tableBody.appendChild(row));
+  }
+
+  private createTaskRow(
+    taskName: string,
+    minutes: number | null,
+    startTime: Date | null,
+    endTime: Date | null,
+    taskStartTime: Date | null,
+    bufferMinutes: number | null,
+    showEstimate: boolean,
+    showStartTime: boolean,
+    isChecked: boolean,
+    hasFoundFirstUncompletedTask: boolean
+  ): HTMLTableRowElement {
+    const currentTime = new Date();
+    let rowClass = null;
+    if (isChecked) {
+      rowClass = TableRenderer.COMPLETED_CLASS;
+    } else if (bufferMinutes !== null) {
+      rowClass =
+        bufferMinutes < 0
+          ? TableRenderer.LATE_CLASS
+          : TableRenderer.ON_TIME_CLASS;
+    }
+    const tableRowValues = [taskName];
+    if (showEstimate && minutes !== null) {
+      tableRowValues.push(`${minutes}m`);
+    }
+    if (showStartTime && startTime) {
+      tableRowValues.push(this.formatTime(startTime));
+    }
+    if (endTime) {
+      tableRowValues.push(this.formatTime(endTime));
+    }
+    const taskRow = this.createTableRow(tableRowValues, false, rowClass);
+    return taskRow;
+  }
+
+  private createBufferRow(bufferMinutes: number): HTMLTableRowElement {
+    const bufferRow = document.createElement('tr');
+    bufferRow.classList.add(TableRenderer.BUFFER_TIME_CLASS);
+    const bufferNameCell = this.createTableCell(TableRenderer.BUFFER_TIME_NAME);
+    bufferRow.appendChild(bufferNameCell);
+    const bufferTimeCell = document.createElement('td');
+    bufferTimeCell.textContent = `${bufferMinutes}m`;
+    bufferTimeCell.setAttribute('colspan', '3');
+    bufferRow.appendChild(bufferTimeCell);
+    return bufferRow;
   }
 
   private createTableCell(value: string, isHeader = false): HTMLElement {
@@ -553,18 +697,6 @@ class TableRenderer {
       row.appendChild(cell);
     });
     return row;
-  }
-
-  private createBufferRow(bufferMinutes: number): HTMLTableRowElement {
-    const bufferRow = document.createElement('tr');
-    bufferRow.classList.add(TableRenderer.BUFFER_TIME_CLASS);
-    const bufferNameCell = this.createTableCell(TableRenderer.BUFFER_TIME_NAME);
-    bufferRow.appendChild(bufferNameCell);
-    const bufferTimeCell = document.createElement('td');
-    bufferTimeCell.textContent = `${bufferMinutes}m`;
-    bufferTimeCell.setAttribute('colspan', '3');
-    bufferRow.appendChild(bufferTimeCell);
-    return bufferRow;
   }
 
   private formatTime(date: Date): string {
@@ -634,8 +766,8 @@ class TaskParser {
   private taskNameRegex: RegExp;
   private linkRegex: RegExp;
   private markdownLinkRegex: RegExp;
-  private estimateRegex: RegExp;
-  private timeRegex: RegExp;
+  public estimateRegex: RegExp;
+  public timeRegex: RegExp;
   private dateTimeRegex: RegExp;
   private dateDelimiter: RegExp;
 
@@ -644,7 +776,8 @@ class TaskParser {
     private startTimeDelimiter: string,
     dateDelimiter: string,
     private showStartTimeInTaskName: boolean,
-    private showEstimateInTaskName: boolean
+    private showEstimateInTaskName: boolean,
+    private showCompletedTasks: boolean
   ) {
     this.taskNameRegex = TaskParser.TASK_NAME_REGEX;
     this.linkRegex = TaskParser.LINK_REGEX;
@@ -657,6 +790,7 @@ class TaskParser {
       `\\${startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`
     );
     this.dateDelimiter = dateDelimiter ? new RegExp(dateDelimiter) : /(?!x)x/;
+    this.showCompletedTasks = showCompletedTasks;
   }
 
   static fromSettings(settings: DynamicTimetableSettings): TaskParser {
@@ -665,7 +799,8 @@ class TaskParser {
       settings.startTimeDelimiter,
       settings.dateDelimiter,
       settings.showStartTimeInTaskName,
-      settings.showEstimateInTaskName
+      settings.showEstimateInTaskName,
+      settings.showCompletedTasks
     );
   }
 
@@ -684,25 +819,32 @@ class TaskParser {
     const currentDate = new Date();
     let nextDay = 0;
 
-    const tasks = lines.flatMap((line) => {
+    let completedTasks: Task[] = [];
+    let uncompletedTasks: Task[] = [];
+
+    for (let line of lines) {
       if (new RegExp(this.dateDelimiter).test(line)) {
         nextDay += 1;
-        return [];
+        continue;
       }
 
       if (
         !line.startsWith('- [ ]') &&
         !line.startsWith('+ [ ]') &&
-        !line.startsWith('* [ ]')
+        !line.startsWith('* [ ]') &&
+        (!this.showCompletedTasks ||
+          (!line.startsWith('- [x]') &&
+            !line.startsWith('+ [x]') &&
+            !line.startsWith('* [x]')))
       ) {
-        return [];
+        continue;
       }
 
       if (
         !line.includes(this.separator) &&
         !line.includes(this.startTimeDelimiter)
       ) {
-        return [];
+        continue;
       }
 
       const taskName = this.parseTaskName(line);
@@ -713,15 +855,21 @@ class TaskParser {
         line.startsWith('+ [x]') ||
         line.startsWith('* [x]');
 
-      return {
+      const task = {
         task: taskName,
         startTime: startTime,
         estimate: estimate,
         isChecked: isChecked,
       };
-    });
 
-    return tasks;
+      if (isChecked) {
+        completedTasks.unshift(task);
+      } else {
+        uncompletedTasks.push(task);
+      }
+    }
+
+    return [...uncompletedTasks, ...completedTasks];
   }
 
   public parseTaskName(taskName: string): string {
@@ -874,6 +1022,12 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
       'Enable Overdue Notice',
       '',
       'enableOverdueNotice',
+      'toggle'
+    );
+    this.createSetting(
+      'Show Completed Tasks',
+      'If enabled, displays completed tasks in the timetable.',
+      'showCompletedTasks',
       'toggle'
     );
   }
