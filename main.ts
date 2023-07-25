@@ -235,6 +235,10 @@ class TimetableView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.clearInterval();
+  }
+
+  private clearInterval(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = undefined;
@@ -259,25 +263,26 @@ class TimetableView extends ItemView {
     if (tasks.length === 0) {
       return;
     }
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      if (this.overdueNotice) {
-        this.overdueNotice.hide();
-        this.overdueNotice = null;
-      }
-    }
+    this.clearInterval();
+
     this.intervalId = setInterval(() => {
-      const topTask = tasks[0];
-      const duration =
-        topTask && this.plugin.targetFile
-          ? (new Date().getTime() - this.plugin.targetFile?.stat.mtime) / 1000
-          : 0;
-      const topTaskEstimate = Number(topTask.estimate) * 60 || 0;
-      this.progressBarManager.createOrUpdateProgressBar(
-        duration,
-        topTaskEstimate
-      );
+      this.updateProgressBar(tasks[0]);
     }, this.plugin.settings.intervalTime * 1000);
+  }
+
+  private updateProgressBar(topTask: Task): void {
+    const duration = this.getDuration(topTask);
+    const topTaskEstimate = Number(topTask.estimate) * 60 || 0;
+    this.progressBarManager.createOrUpdateProgressBar(
+      duration,
+      topTaskEstimate
+    );
+  }
+
+  private getDuration(task: Task): number {
+    return task && this.plugin.targetFile
+      ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000
+      : 0;
   }
 
   async completeTask(task: Task): Promise<void> {
@@ -570,12 +575,10 @@ class TableRenderer {
           minutes,
           startTime,
           endTime,
-          taskStartTime,
           bufferMinutes,
           showEstimate,
           showStartTime,
-          isChecked,
-          hasFoundFirstUncompletedTask
+          isChecked
         );
         completedTaskRows.push(row);
 
@@ -608,12 +611,10 @@ class TableRenderer {
             minutes,
             startTime,
             endTime,
-            taskStartTime,
             bufferMinutes,
             showEstimate,
             showStartTime,
-            isChecked,
-            hasFoundFirstUncompletedTask
+            isChecked
           );
           uncompletedTaskRows.push(row);
         }
@@ -634,14 +635,11 @@ class TableRenderer {
     minutes: number | null,
     startTime: Date | null,
     endTime: Date | null,
-    taskStartTime: Date | null,
     bufferMinutes: number | null,
     showEstimate: boolean,
     showStartTime: boolean,
-    isChecked: boolean,
-    hasFoundFirstUncompletedTask: boolean
+    isChecked: boolean
   ): HTMLTableRowElement {
-    const currentTime = new Date();
     let rowClass = null;
     if (isChecked) {
       rowClass = TableRenderer.COMPLETED_CLASS;
