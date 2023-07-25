@@ -37,3 +37,11 @@
   display: block;
   overflow: auto;
 }
+
+.dt-button-container {
+  display: flex;
+}
+
+.dt-button-container button {
+    flex: 1;
+}

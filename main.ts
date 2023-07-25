@@ -391,10 +391,7 @@ class TaskManager {
       : null;
 
     const taskRegex = new RegExp(
-      `^- \\[ \\] ${taskName.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        '\\$&'
-      )}(\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
+      `^- \\[ \\] (.+?)(\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
       )}\\s*${task.estimate}|\\s*@\\s*\\d{1,2}:\\d{2})`,
@@ -438,7 +435,7 @@ class TableRenderer {
   private static readonly COMPLETED_CLASS = 'completed';
   private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
   private static readonly BUFFER_TIME_NAME = 'Buffer Time';
-  private static readonly INIT_BUTTON_TEXT = 'Init';
+  private static readonly INIT_BUTTON_TEXT = 'Initialize';
 
   private plugin: DynamicTimetable;
   private contentEl: HTMLElement;
@@ -456,9 +453,21 @@ class TableRenderer {
     if (this.plugin.settings.showProgressBar) {
       this.progressBarManager.createOrUpdateProgressBar(0, 0);
     }
-    const initButton = this.createButton();
+
+    const buttonContainer = this.contentEl.createEl('div');
+    buttonContainer.classList.add('dt-button-container');
+
+    const initButton = this.createInitButton();
+    const completeButton = this.createCompleteButton();
+    const interruptButton = this.createInterruptButton();
+
+    buttonContainer.appendChild(completeButton);
+    buttonContainer.appendChild(interruptButton);
+    buttonContainer.appendChild(initButton);
+
     const scheduleTable = this.initializeTable(tasks);
-    this.contentEl.appendChild(initButton);
+
+    this.contentEl.appendChild(buttonContainer);
     this.contentEl.appendChild(scheduleTable);
   }
 
@@ -473,10 +482,67 @@ class TableRenderer {
     return scheduleTable;
   }
 
-  createButton() {
+  createCompleteButton() {
+    const completeButton = this.contentEl.createEl('button', {
+      text: 'Complete',
+    });
+    completeButton.classList.add('dt-button', 'dt-complete-button');
+    completeButton.addEventListener('click', async () => {
+      if (
+        this.plugin.targetFile === null ||
+        this.plugin.taskParser === undefined
+      ) {
+        new Notice('No tasks to complete!');
+        return;
+      }
+      const content = await this.plugin.app.vault.read(this.plugin.targetFile);
+      const task = this.plugin.taskParser.filterAndParseTasks(content)[0];
+      if (task && this.plugin.timetableView) {
+        try {
+          await this.plugin.timetableView.completeTask(task);
+        } catch (error) {
+          new Notice('Task completion failed!');
+        }
+      } else {
+        new Notice('No tasks to complete!');
+      }
+    });
+    return completeButton;
+  }
+
+  createInterruptButton() {
+    const interruptButton = this.contentEl.createEl('button', {
+      text: 'Interrupt',
+    });
+    interruptButton.classList.add('dt-button', 'dt-interrupt-button');
+    interruptButton.addEventListener('click', async () => {
+      if (
+        this.plugin.targetFile === null ||
+        this.plugin.taskParser === undefined
+      ) {
+        new Notice('No tasks to interrupt!');
+        return;
+      }
+      const content = await this.plugin.app.vault.read(this.plugin.targetFile);
+      const task = this.plugin.taskParser.filterAndParseTasks(content)[0];
+      if (task && this.plugin.timetableView) {
+        try {
+          await this.plugin.timetableView.interruptTask(task);
+        } catch (error) {
+          new Notice('Task interruption failed!');
+        }
+      } else {
+        new Notice('No tasks to interrupt!');
+      }
+    });
+    return interruptButton;
+  }
+
+  createInitButton() {
     const initButton = this.contentEl.createEl('button', {
       text: TableRenderer.INIT_BUTTON_TEXT,
     });
+    initButton.classList.add('dt-button', 'dt-init-button');
     initButton.addEventListener('click', async () => {
       await this.plugin.initTimetableView();
       new Notice('Timetable initialized!');
