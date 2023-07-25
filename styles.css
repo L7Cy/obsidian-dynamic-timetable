@@ -29,6 +29,12 @@
   background-color: #e55a16;
 }
 
+.dt-progress-bar-container {
+  position: sticky;
+  top: 0;
+  background-color: #ffffff;
+}
+
 .dt-table {
   padding: 10px;
 }
@@ -40,8 +46,10 @@
 
 .dt-button-container {
   display: flex;
+  position: sticky;
+  top: 10px;
 }
 
 .dt-button-container button {
-    flex: 1;
+  flex: 1;
 }

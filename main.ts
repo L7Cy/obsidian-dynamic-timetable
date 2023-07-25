@@ -797,11 +797,20 @@ class ProgressBarManager {
   }
 
   createOrUpdateProgressBar(duration: number, estimate: number): void {
-    let progressBar = this.contentEl.querySelector(
+    let progressBarContainer = this.contentEl.querySelector(
+      '.' + ProgressBarManager.PROGRESS_BAR_CLASS + '-container'
+    ) as HTMLElement;
+    if (!progressBarContainer) {
+      progressBarContainer = this.contentEl.createEl('div');
+      progressBarContainer.addClass(
+        ProgressBarManager.PROGRESS_BAR_CLASS + '-container'
+      );
+    }
+    let progressBar = progressBarContainer.querySelector(
       '.' + ProgressBarManager.PROGRESS_BAR_CLASS
     ) as HTMLElement;
     if (!progressBar) {
-      progressBar = this.contentEl.createEl('div');
+      progressBar = progressBarContainer.createEl('div');
       progressBar.addClass(ProgressBarManager.PROGRESS_BAR_CLASS);
     }
     const width = Math.min((duration / estimate) * 100, 100);
