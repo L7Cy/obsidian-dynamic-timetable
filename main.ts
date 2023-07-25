@@ -545,8 +545,7 @@ class TableRenderer {
         this.plugin.settings.showBufferTime &&
         taskStartTime &&
         (!hasFoundFirstUncompletedTask || previousEndTime) &&
-        !isChecked &&
-        hasFoundFirstUncompletedTask
+        !isChecked
       ) {
         const compareTime = hasFoundFirstUncompletedTask
           ? previousEndTime
