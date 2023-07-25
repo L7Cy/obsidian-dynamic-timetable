@@ -376,13 +376,17 @@ class TaskManager {
     remainingTime?: number
   ): string {
     const taskName = task.task.replace(
-      new RegExp(`\\s*@\\s*\\d{1,2}:\\d{2}\\s*$`),
+      new RegExp(`\\s*@\\s*\\d{1,2}[:]?\\d{2}\\s*$`),
       ''
     );
 
-    const startTime = task.task.match(
-      new RegExp(`\\s*@\\s*(\\d{1,2}:\\d{2})\\s*$`)
+    let startTime = task.task.match(
+      new RegExp(`\\s*@\\s*(\\d{1,2}[:]?\\d{2})\\s*$`)
     );
+
+    if (startTime && startTime[1].length === 4) {
+      startTime[1] = startTime[1].slice(0, 2) + ':' + startTime[1].slice(2);
+    }
 
     const actualStartTime = startTime
       ? new Date(
@@ -394,7 +398,7 @@ class TaskManager {
       `^- \\[ \\] (.+?)(\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
-      )}\\s*${task.estimate}|\\s*@\\s*\\d{1,2}:\\d{2})`,
+      )}\\s*${task.estimate}|\\s*@\\s*\\d{1,2}[:]?\\d{2})`,
       'm'
     );
 
@@ -420,8 +424,13 @@ class TaskManager {
   }
 
   private formatTime(date: Date): string {
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+
+    if (minutes === 0) {
+      return `${hours.toString().padStart(2, '0')}00`;
+    }
+
     return `${hours.toString().padStart(2, '0')}:${minutes
       .toString()
       .padStart(2, '0')}`;
