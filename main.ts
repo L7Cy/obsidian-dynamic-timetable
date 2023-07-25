@@ -151,16 +151,16 @@ export default class DynamicTimetable extends Plugin {
     if (!this.isTimetableOpen()) {
       this.openTimetable();
     } else {
-      this.updateOpenTimetableViews();
+      this.updateOpenTimetableViews(true);
     }
   }
 
-  async updateOpenTimetableViews() {
+  async updateOpenTimetableViews(scrollToFirstUncompleted: boolean = false) {
     for (const leaf of this.app.workspace.getLeavesOfType('Timetable')) {
       const view = leaf.view;
       if (view instanceof TimetableView) {
         this.checkTargetFile();
-        await view.update();
+        await view.update(scrollToFirstUncompleted);
       }
     }
   }
@@ -231,7 +231,7 @@ class TimetableView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    await this.update();
+    await this.update(true);
   }
 
   async onClose(): Promise<void> {
@@ -250,12 +250,12 @@ class TimetableView extends ItemView {
     }
   }
 
-  async update() {
+  async update(scrollToFirstUncompleted: boolean = false) {
     if (!this.plugin.targetFile) {
       return;
     }
     let tasks = await this.taskManager.initializeTasks();
-    await this.tableRenderer.renderTable(tasks);
+    await this.tableRenderer.renderTable(tasks, scrollToFirstUncompleted);
     this.setupInterval(tasks);
   }
 
@@ -456,7 +456,10 @@ class TableRenderer {
     this.progressBarManager = new ProgressBarManager(plugin, contentEl);
   }
 
-  async renderTable(tasks: Task[]): Promise<void> {
+  async renderTable(
+    tasks: Task[],
+    scrollToFirstUncompleted: boolean = false
+  ): Promise<void> {
     this.contentEl.empty();
     if (this.plugin.settings.showProgressBar) {
       this.progressBarManager.createOrUpdateProgressBar(0, 0);
@@ -477,6 +480,17 @@ class TableRenderer {
 
     this.contentEl.appendChild(buttonContainer);
     this.contentEl.appendChild(scheduleTable);
+
+    if (scrollToFirstUncompleted) {
+      const firstUncompletedTask = document.getElementById(
+        'first-uncompleted-task'
+      );
+      if (firstUncompletedTask) {
+        const stickyHeight = buttonContainer.getBoundingClientRect().height;
+        this.contentEl.scrollTop =
+          firstUncompletedTask.offsetTop - stickyHeight;
+      }
+    }
   }
 
   initializeTable(tasks: Task[]) {
@@ -693,6 +707,10 @@ class TableRenderer {
             showStartTime,
             isChecked
           );
+          if (!hasFoundFirstUncompletedTask) {
+            row.id = 'first-uncompleted-task';
+            hasFoundFirstUncompletedTask = true;
+          }
           uncompletedTaskRows.push(row);
         }
         if (!hasFoundFirstUncompletedTask) {
