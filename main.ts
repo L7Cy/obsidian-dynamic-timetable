@@ -444,7 +444,9 @@ class TableRenderer {
   private static readonly COMPLETED_CLASS = 'completed';
   private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
   private static readonly BUFFER_TIME_NAME = 'Buffer Time';
-  private static readonly INIT_BUTTON_TEXT = 'Initialize';
+  private static readonly COMPLETE_BUTTON_TEXT = '✅ Complete';
+  private static readonly INTERRUPT_BUTTON_TEXT = '⏹️ Interrupt';
+  private static readonly INIT_BUTTON_TEXT = '🔄 Initialize';
 
   private plugin: DynamicTimetable;
   private contentEl: HTMLElement;
@@ -493,7 +495,7 @@ class TableRenderer {
 
   createCompleteButton() {
     const completeButton = this.contentEl.createEl('button', {
-      text: 'Complete',
+      text: TableRenderer.COMPLETE_BUTTON_TEXT,
     });
     completeButton.classList.add('dt-button', 'dt-complete-button');
     completeButton.addEventListener('click', async () => {
@@ -521,7 +523,7 @@ class TableRenderer {
 
   createInterruptButton() {
     const interruptButton = this.contentEl.createEl('button', {
-      text: 'Interrupt',
+      text: TableRenderer.INTERRUPT_BUTTON_TEXT,
     });
     interruptButton.classList.add('dt-button', 'dt-interrupt-button');
     interruptButton.addEventListener('click', async () => {
