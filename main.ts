@@ -375,11 +375,6 @@ class TaskManager {
     elapsedTime: number,
     remainingTime?: number
   ): string {
-    const taskName = task.task.replace(
-      new RegExp(`\\s*@\\s*\\d{1,2}[:]?\\d{2}\\s*$`),
-      ''
-    );
-
     let startTime = task.task.match(
       new RegExp(`\\s*@\\s*(\\d{1,2}[:]?\\d{2})\\s*$`)
     );
@@ -404,15 +399,17 @@ class TaskManager {
 
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      if (taskRegex.test(lines[i])) {
-        let newTaskLine = `- [x] ${taskName} ${
+      const taskMatch = lines[i].match(taskRegex);
+      if (taskMatch) {
+        const originalTaskName = taskMatch[1];
+        let newTaskLine = `- [x] ${originalTaskName} ${
           this.plugin.settings.taskEstimateDelimiter
         } ${elapsedTime.toFixed(0)}`;
         if (actualStartTime) {
           newTaskLine += ` @ ${this.formatTime(actualStartTime)}`;
         }
         if (remainingTime !== undefined) {
-          newTaskLine += `\n- [ ] ${taskName} ${
+          newTaskLine += `\n- [ ] ${originalTaskName} ${
             this.plugin.settings.taskEstimateDelimiter
           } ${remainingTime.toFixed(0)}`;
         }
