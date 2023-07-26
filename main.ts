@@ -287,12 +287,12 @@ class TimetableView extends ItemView {
 
   async completeTask(task: Task): Promise<void> {
     await this.taskManager.completeTask(task);
-    this.update();
+    this.update(true);
   }
 
   async interruptTask(task: Task): Promise<void> {
     await this.taskManager.interruptTask(task);
-    this.update();
+    this.update(true);
   }
 }
 
