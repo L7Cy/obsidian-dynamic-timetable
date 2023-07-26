@@ -605,7 +605,7 @@ class TableRenderer {
     const { showEstimate, showStartTime, showCompletedTasks } =
       this.plugin.settings;
 
-    let currentTime = new Date();
+    let currentTaskEndTime = new Date();
     let previousEndTime: Date | null = null;
     let completedTaskRows: HTMLTableRowElement[] = [];
     let uncompletedTaskRows: HTMLTableRowElement[] = [];
@@ -622,7 +622,7 @@ class TableRenderer {
         estimate !== null && estimate !== undefined ? parseInt(estimate) : null;
       let startTime: Date | null =
         !isChecked && !hasFoundFirstUncompletedTask
-          ? currentTime
+          ? currentTaskEndTime
           : taskStartTime
           ? new Date(taskStartTime)
           : null;
@@ -637,7 +637,7 @@ class TableRenderer {
       ) {
         const compareTime = hasFoundFirstUncompletedTask
           ? previousEndTime
-          : currentTime;
+          : currentTaskEndTime;
         if (!compareTime) return;
         bufferMinutes = Math.ceil(
           (new Date(taskStartTime).getTime() - compareTime.getTime()) /
@@ -654,11 +654,11 @@ class TableRenderer {
         if (minutes !== null) {
           if (!startTime) {
             startTime = new Date(
-              currentTime.getTime() -
+              currentTaskEndTime.getTime() -
                 minutes * TableRenderer.MILLISECONDS_IN_MINUTE
             );
           }
-          endTime = currentTime;
+          endTime = currentTaskEndTime;
         }
 
         const row = this.createTaskRow(
@@ -673,14 +673,14 @@ class TableRenderer {
         );
         completedTaskRows.push(row);
 
-        currentTime = startTime!;
+        currentTaskEndTime = startTime!;
         continue;
       }
 
       if (!hasFoundFirstUncompletedTask) {
-        currentTime = new Date();
+        currentTaskEndTime = new Date();
 
-        startTime = startTime || currentTime;
+        startTime = startTime || currentTaskEndTime;
         if (minutes !== null) {
           endTime = new Date(
             startTime.getTime() + minutes * TableRenderer.MILLISECONDS_IN_MINUTE
