@@ -61,7 +61,7 @@ export default class DynamicTimetable extends Plugin {
     dateDelimiter: '',
     enableOverdueNotice: true,
     headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
-    showCompletedTasks: false,
+    showCompletedTasks: true,
   };
 
   async onload() {
