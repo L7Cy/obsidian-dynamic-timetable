@@ -116,7 +116,6 @@ export default class DynamicTimetable extends Plugin {
     );
 
     this.addCustomCommand('complete-task', 'Complete Task', async () => {
-      this.checkTargetFile();
       if (this.targetFile === null || this.taskParser === undefined) {
         return;
       }
