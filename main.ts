@@ -383,11 +383,9 @@ class TaskManager {
       startTime[1] = startTime[1].slice(0, 2) + ':' + startTime[1].slice(2);
     }
 
-    const actualStartTime = startTime
-      ? new Date(
-          Date.now() - elapsedTime * TableRenderer.MILLISECONDS_IN_MINUTE
-        )
-      : null;
+    const actualStartTime = new Date(
+      Date.now() - elapsedTime * TableRenderer.MILLISECONDS_IN_MINUTE
+    );
 
     const taskRegex = new RegExp(
       `^- \\[ \\] (.+?)(\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
@@ -405,9 +403,9 @@ class TaskManager {
         let newTaskLine = `- [x] ${originalTaskName} ${
           this.plugin.settings.taskEstimateDelimiter
         } ${elapsedTime.toFixed(0)}`;
-        if (actualStartTime) {
-          newTaskLine += ` @ ${this.formatTime(actualStartTime)}`;
-        }
+
+        newTaskLine += ` @ ${this.formatTime(actualStartTime)}`;
+
         if (remainingTime !== undefined) {
           newTaskLine += `\n- [ ] ${originalTaskName} ${
             this.plugin.settings.taskEstimateDelimiter
