@@ -324,7 +324,6 @@ class TaskManager {
   }
 
   async completeTask(task: Task): Promise<void> {
-    console.log('completeTask called with task:', task);
     if (!this.plugin.targetFile || !task.estimate) {
       return;
     }
@@ -339,7 +338,6 @@ class TaskManager {
   }
 
   async interruptTask(task: Task): Promise<void> {
-    console.log('interruptTask called with task:', task);
     if (!this.plugin.targetFile || !task.estimate) {
       return;
     }
