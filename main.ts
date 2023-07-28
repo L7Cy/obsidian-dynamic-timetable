@@ -660,6 +660,9 @@ class TableRenderer {
         showStartTime,
         isChecked
       );
+      if (firstUncompletedTaskFound) {
+        row.id = 'first-uncompleted-task';
+      }
       tableBody.appendChild(row);
 
       currentTaskEndTime = endTime || currentTaskEndTime;
