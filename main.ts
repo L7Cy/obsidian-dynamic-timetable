@@ -12,6 +12,7 @@ import {
 interface Task {
   task: string;
   startTime: Date | null;
+  previousEndTime: Date | null;
   estimate: string | null;
   isChecked: boolean;
 }
@@ -279,9 +280,12 @@ class TimetableView extends ItemView {
   }
 
   private getDuration(task: Task): number {
-    return task && this.plugin.targetFile
-      ? (new Date().getTime() - this.plugin.targetFile.stat.mtime) / 1000
-      : 0;
+    if (task && this.plugin.targetFile && task.previousEndTime) {
+      const previousEndTime = new Date(task.previousEndTime).getTime();
+      return (new Date().getTime() - previousEndTime) / 1000;
+    } else {
+      return 0;
+    }
   }
 
   async completeTask(task: Task): Promise<void> {
@@ -359,13 +363,15 @@ class TaskManager {
   }
 
   private getElapsedTime(task: Task): number {
-    if (this.plugin.targetFile) {
-      task.startTime = new Date(this.plugin.targetFile.stat.mtime);
+    const startTime = task.previousEndTime || null;
+
+    if (!startTime) {
+      return 0;
     }
-    let elapsedTime = task.startTime
-      ? (new Date().getTime() - task.startTime.getTime()) / 60000
-      : 0;
-    return Math.floor(elapsedTime);
+
+    const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+
+    return Math.max(0, Math.floor(elapsedTimeInMinutes));
   }
 
   private updateTaskInContent(
@@ -599,16 +605,18 @@ class TableRenderer {
     tableBody: HTMLTableSectionElement,
     tasks: Task[]
   ): void {
-    const { showEstimate, showStartTime, showCompletedTasks } =
+    const { showEstimate, showStartTime, showBufferTime } =
       this.plugin.settings;
 
     let currentTaskEndTime = new Date();
-    let previousEndTime: Date | null = null;
-    let completedTaskRows: HTMLTableRowElement[] = [];
-    let uncompletedTaskRows: HTMLTableRowElement[] = [];
-    let hasFoundFirstUncompletedTask = false;
+    let firstUncompletedTaskFound = false;
 
-    for (const task of tasks) {
+    const completedTasks = tasks.filter((task) => task.isChecked).reverse();
+    const uncompletedTasks = tasks.filter((task) => !task.isChecked);
+
+    const orderedTasks = [...completedTasks, ...uncompletedTasks];
+
+    for (const task of orderedTasks) {
       const {
         task: parsedTaskName,
         estimate,
@@ -617,109 +625,51 @@ class TableRenderer {
       } = task;
       const minutes =
         estimate !== null && estimate !== undefined ? parseInt(estimate) : null;
-      let startTime: Date | null =
-        !isChecked && !hasFoundFirstUncompletedTask
-          ? currentTaskEndTime
-          : taskStartTime
-          ? new Date(taskStartTime)
-          : null;
-      let endTime: Date | null = null;
-      let bufferMinutes = null;
+      let startTime: Date | null = null;
 
-      if (
-        this.plugin.settings.showBufferTime &&
-        taskStartTime &&
-        (!hasFoundFirstUncompletedTask || previousEndTime) &&
-        !isChecked
-      ) {
-        const compareTime = hasFoundFirstUncompletedTask
-          ? previousEndTime
-          : currentTaskEndTime;
-        if (!compareTime) return;
+      if (!firstUncompletedTaskFound && !isChecked) {
+        startTime = currentTaskEndTime;
+        firstUncompletedTaskFound = true;
+      } else if (taskStartTime) {
+        startTime = new Date(taskStartTime);
+      } else {
+        startTime = currentTaskEndTime;
+      }
+
+      let endTime =
+        minutes !== null && startTime
+          ? new Date(
+              startTime.getTime() +
+                minutes * TableRenderer.MILLISECONDS_IN_MINUTE
+            )
+          : null;
+      let bufferMinutes: number | null = null;
+
+      if (showBufferTime && !isChecked && taskStartTime) {
         bufferMinutes = Math.ceil(
-          (new Date(taskStartTime).getTime() - compareTime.getTime()) /
+          (new Date(taskStartTime).getTime() - currentTaskEndTime.getTime()) /
             TableRenderer.MILLISECONDS_IN_MINUTE
         );
-        if (!hasFoundFirstUncompletedTask && bufferMinutes <= 0) {
-          bufferMinutes = null;
-        } else {
+        if (startTime !== currentTaskEndTime) {
           const bufferRow = this.createBufferRow(bufferMinutes);
-          uncompletedTaskRows.push(bufferRow);
-        }
-      }
-      if (isChecked && showCompletedTasks) {
-        if (minutes !== null) {
-          if (!startTime) {
-            startTime = new Date(
-              currentTaskEndTime.getTime() -
-                minutes * TableRenderer.MILLISECONDS_IN_MINUTE
-            );
-          }
-          endTime = currentTaskEndTime;
-        }
-
-        const row = this.createTaskRow(
-          parsedTaskName,
-          minutes,
-          startTime,
-          endTime,
-          bufferMinutes,
-          showEstimate,
-          showStartTime,
-          isChecked
-        );
-        completedTaskRows.push(row);
-
-        currentTaskEndTime = startTime!;
-        continue;
-      }
-
-      if (!hasFoundFirstUncompletedTask) {
-        currentTaskEndTime = new Date();
-
-        startTime = startTime || currentTaskEndTime;
-        if (minutes !== null) {
-          endTime = new Date(
-            startTime.getTime() + minutes * TableRenderer.MILLISECONDS_IN_MINUTE
-          );
-        }
-      } else {
-        if (minutes !== null && previousEndTime) {
-          startTime = startTime || previousEndTime;
-          endTime = new Date(
-            startTime.getTime() + minutes * TableRenderer.MILLISECONDS_IN_MINUTE
-          );
+          tableBody.appendChild(bufferRow);
         }
       }
 
-      if (!isChecked || (isChecked && showCompletedTasks)) {
-        if (startTime && endTime) {
-          const row = this.createTaskRow(
-            parsedTaskName,
-            minutes,
-            startTime,
-            endTime,
-            bufferMinutes,
-            showEstimate,
-            showStartTime,
-            isChecked
-          );
-          if (!hasFoundFirstUncompletedTask) {
-            row.id = 'first-uncompleted-task';
-            hasFoundFirstUncompletedTask = true;
-          }
-          uncompletedTaskRows.push(row);
-        }
-        if (!hasFoundFirstUncompletedTask) {
-          hasFoundFirstUncompletedTask = true;
-        }
-        previousEndTime = endTime;
-      }
+      const row = this.createTaskRow(
+        parsedTaskName,
+        minutes,
+        startTime,
+        endTime,
+        bufferMinutes,
+        showEstimate,
+        showStartTime,
+        isChecked
+      );
+      tableBody.appendChild(row);
+
+      currentTaskEndTime = endTime || currentTaskEndTime;
     }
-
-    completedTaskRows.reverse().forEach((row) => tableBody.appendChild(row));
-
-    uncompletedTaskRows.forEach((row) => tableBody.appendChild(row));
   }
 
   private createTaskRow(
@@ -921,6 +871,8 @@ class TaskParser {
     let completedTasks: Task[] = [];
     let uncompletedTasks: Task[] = [];
 
+    let previousEndTime: Date | null = null;
+
     for (let line of lines) {
       if (new RegExp(this.dateDelimiter).test(line)) {
         nextDay += 1;
@@ -954,9 +906,17 @@ class TaskParser {
         line.startsWith('+ [x]') ||
         line.startsWith('* [x]');
 
+      if (startTime !== null && estimate !== null) {
+        const estimateInMilliseconds = Number(estimate) * 60 * 1000;
+        previousEndTime = startTime
+          ? new Date(startTime.getTime() + estimateInMilliseconds)
+          : new Date();
+      }
+
       const task = {
         task: taskName,
         startTime: startTime,
+        previousEndTime: previousEndTime,
         estimate: estimate,
         isChecked: isChecked,
       };
