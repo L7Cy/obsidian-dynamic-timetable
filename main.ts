@@ -643,12 +643,12 @@ class TableRenderer {
           : null;
       let bufferMinutes: number | null = null;
 
-      if (showBufferTime && !isChecked && taskStartTime) {
+      if (!isChecked && taskStartTime) {
         bufferMinutes = Math.ceil(
           (new Date(taskStartTime).getTime() - currentTaskEndTime.getTime()) /
             TableRenderer.MILLISECONDS_IN_MINUTE
         );
-        if (startTime !== currentTaskEndTime) {
+        if (showBufferTime && startTime !== currentTaskEndTime) {
           const bufferRow = this.createBufferRow(bufferMinutes);
           tableBody.appendChild(bufferRow);
         }
