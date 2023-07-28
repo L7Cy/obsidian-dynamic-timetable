@@ -54,3 +54,8 @@
 .dt-button-container button {
   flex: 1;
 }
+
+.dt-button {
+  border-radius: 0;
+  cursor: pointer;
+}
