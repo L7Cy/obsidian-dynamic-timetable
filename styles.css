@@ -37,6 +37,7 @@
 
 .dt-table {
   padding: 10px;
+  -webkit-border-horizontal-spacing: 0px;
 }
 
 .dt-content {
