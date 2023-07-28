@@ -7,6 +7,7 @@ import {
   PluginSettingTab,
   Setting,
   Notice,
+  setIcon,
 } from 'obsidian';
 
 interface Task {
@@ -442,9 +443,6 @@ class TableRenderer {
   private static readonly COMPLETED_CLASS = 'completed';
   private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
   private static readonly BUFFER_TIME_NAME = 'Buffer Time';
-  private static readonly COMPLETE_BUTTON_TEXT = '✅';
-  private static readonly INTERRUPT_BUTTON_TEXT = '⏹️';
-  private static readonly INIT_BUTTON_TEXT = '🔄';
 
   private plugin: DynamicTimetable;
   private contentEl: HTMLElement;
@@ -506,10 +504,9 @@ class TableRenderer {
   }
 
   createCompleteButton() {
-    const completeButton = this.contentEl.createEl('button', {
-      text: TableRenderer.COMPLETE_BUTTON_TEXT,
-    });
+    const completeButton = this.contentEl.createEl('button');
     completeButton.classList.add('dt-button', 'dt-complete-button');
+    setIcon(completeButton, 'check-circle');
     completeButton.addEventListener('click', async () => {
       if (
         this.plugin.targetFile === null ||
@@ -534,9 +531,9 @@ class TableRenderer {
   }
 
   createInterruptButton() {
-    const interruptButton = this.contentEl.createEl('button', {
-      text: TableRenderer.INTERRUPT_BUTTON_TEXT,
-    });
+    const interruptButton = this.contentEl.createEl('button');
+    interruptButton.classList.add('dt-button', 'dt-interrupt-button');
+    setIcon(interruptButton, 'circle-slash');
     interruptButton.classList.add('dt-button', 'dt-interrupt-button');
     interruptButton.addEventListener('click', async () => {
       if (
@@ -562,10 +559,9 @@ class TableRenderer {
   }
 
   createInitButton() {
-    const initButton = this.contentEl.createEl('button', {
-      text: TableRenderer.INIT_BUTTON_TEXT,
-    });
+    const initButton = this.contentEl.createEl('button');
     initButton.classList.add('dt-button', 'dt-init-button');
+    setIcon(initButton, 'refresh-cw');
     initButton.addEventListener('click', async () => {
       await this.plugin.initTimetableView();
       new Notice('Timetable initialized!');
