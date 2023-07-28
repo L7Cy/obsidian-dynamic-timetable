@@ -903,13 +903,6 @@ class TaskParser {
         line.startsWith('+ [x]') ||
         line.startsWith('* [x]');
 
-      if (startTime !== null && estimate !== null) {
-        const estimateInMilliseconds = Number(estimate) * 60 * 1000;
-        previousEndTime = startTime
-          ? new Date(startTime.getTime() + estimateInMilliseconds)
-          : new Date();
-      }
-
       const task = {
         task: taskName,
         startTime: startTime,
@@ -922,6 +915,13 @@ class TaskParser {
         completedTasks.unshift(task);
       } else {
         uncompletedTasks.push(task);
+      }
+
+      if (startTime !== null && estimate !== null) {
+        const estimateInMilliseconds = Number(estimate) * 60 * 1000;
+        previousEndTime = new Date(
+          startTime.getTime() + estimateInMilliseconds
+        );
       }
     }
 
