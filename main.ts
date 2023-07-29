@@ -869,10 +869,13 @@ class TaskParser {
     let uncompletedTasks: Task[] = [];
 
     let previousEndTime: Date | null = null;
+    let foundTask = false;
 
     for (let line of lines) {
       if (new RegExp(this.dateDelimiter).test(line)) {
-        nextDay += 1;
+        if (foundTask) {
+          nextDay += 1;
+        }
         continue;
       }
 
@@ -916,6 +919,8 @@ class TaskParser {
       } else {
         uncompletedTasks.push(task);
       }
+
+      foundTask = true;
 
       if (startTime !== null && estimate !== null) {
         const estimateInMilliseconds = Number(estimate) * 60 * 1000;
