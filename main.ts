@@ -575,7 +575,7 @@ class TableRenderer {
     setIcon(initButton, 'refresh-cw');
     initButton.addEventListener('click', async () => {
       await this.plugin.initTimetableView();
-      new Notice('Timetable initialized!');
+      new Notice('Timetable initialized!', 1000);
     });
     return initButton;
   }
