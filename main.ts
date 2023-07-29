@@ -710,6 +710,11 @@ class TableRenderer {
       tableRowValues.push(this.formatTime(endTime));
     }
     const taskRow = this.createTableRow(tableRowValues, false, rowClass);
+
+    if (!this.plugin.settings.showCompletedTasks && isChecked) {
+      taskRow.style.display = 'none';
+    }
+
     return taskRow;
   }
 
@@ -894,10 +899,9 @@ class TaskParser {
         !line.startsWith('- [ ]') &&
         !line.startsWith('+ [ ]') &&
         !line.startsWith('* [ ]') &&
-        (!this.showCompletedTasks ||
-          (!line.startsWith('- [x]') &&
-            !line.startsWith('+ [x]') &&
-            !line.startsWith('* [x]')))
+        !line.startsWith('- [x]') &&
+        !line.startsWith('+ [x]') &&
+        !line.startsWith('* [x]')
       ) {
         continue;
       }
