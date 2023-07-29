@@ -282,8 +282,15 @@ class TimetableView extends ItemView {
 
   private getDuration(task: Task): number {
     if (task && this.plugin.targetFile && task.previousEndTime) {
-      const previousEndTime = new Date(task.previousEndTime).getTime();
-      return (new Date().getTime() - previousEndTime) / 1000;
+      let duration =
+        (new Date().getTime() - new Date(task.previousEndTime).getTime()) /
+        1000;
+
+      if (duration < 0) {
+        duration += 24 * 60 * 60;
+      }
+
+      return duration;
     } else {
       return 0;
     }
@@ -368,7 +375,11 @@ class TaskManager {
       return 0;
     }
 
-    const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+    let elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+
+    if (elapsedTimeInMinutes < 0) {
+      elapsedTimeInMinutes += 24 * 60;
+    }
 
     return Math.max(0, Math.floor(elapsedTimeInMinutes));
   }
