@@ -451,7 +451,7 @@ class TableRenderer {
   public static readonly MILLISECONDS_IN_MINUTE = 60000;
   private static readonly LATE_CLASS = 'late';
   private static readonly ON_TIME_CLASS = 'on-time';
-  private static readonly COMPLETED_CLASS = 'completed';
+  private static readonly COMPLETED_CLASS = 'dt-completed';
   private static readonly BUFFER_TIME_CLASS = 'dt-buffer-time';
   private static readonly BUFFER_TIME_NAME = 'Buffer Time';
 
