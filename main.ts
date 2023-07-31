@@ -182,16 +182,25 @@ export default class DynamicTimetable extends Plugin {
   }
 
   checkTargetFile() {
-    const abstractFile = this.settings.filePath
-      ? this.app.vault.getAbstractFileByPath(this.settings.filePath)
-      : this.app.workspace.getActiveFile();
+    const abstractFile =
+      this.targetFile === null && this.settings.filePath
+        ? this.app.vault.getAbstractFileByPath(this.settings.filePath)
+        : this.app.workspace.getActiveFile();
 
     if (abstractFile instanceof TFile) {
-      this.targetFile = abstractFile;
+      if (this.targetFile !== abstractFile) {
+        this.targetFile = abstractFile;
+        this.updateFilePathSetting(abstractFile.path);
+      }
     } else {
       this.targetFile = null;
       new Notice('No active file or active file is not a Markdown file');
     }
+  }
+
+  async updateFilePathSetting(newPath: string): Promise<void> {
+    this.settings.filePath = newPath;
+    await this.saveData(this.settings);
   }
 }
 
@@ -1026,13 +1035,6 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
   display(): void {
     this.containerEl.empty();
 
-    this.createSetting(
-      'File Path',
-      'Enter the path to the Markdown file to get task list from. Leave blank to use active file.',
-      'filePath',
-      'text',
-      '/path/to/target/file.md'
-    );
     this.createSetting('Show Estimate Column', '', 'showEstimate', 'toggle');
     this.createSetting('Show Start Time Column', '', 'showStartTime', 'toggle');
     this.createSetting(
