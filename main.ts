@@ -1051,29 +1051,11 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
     );
     this.createSetting('Show Buffer Time Rows', '', 'showBufferTime', 'toggle');
     this.createSetting(
-      'Task/Estimate Delimiter',
-      '',
-      'taskEstimateDelimiter',
-      'text',
-      ';'
+      'Show Completed Tasks',
+      'If enabled, displays completed tasks in the timetable.',
+      'showCompletedTasks',
+      'toggle'
     );
-    this.createSetting(
-      'Start Time Delimiter',
-      '',
-      'startTimeDelimiter',
-      'text',
-      '@'
-    );
-
-    const headerNames = this.plugin.settings.headerNames.join(', ');
-    this.createSetting(
-      'Header Names',
-      'Enter header names, separated by commas.',
-      'headerNames',
-      'text',
-      headerNames
-    );
-
     this.createSetting(
       'Show Progress Bar',
       'If enabled, displays a progress bar based on the top task estimate.',
@@ -1090,22 +1072,40 @@ class DynamicTimetableSettingTab extends PluginSettingTab {
       );
     }
     this.createSetting(
+      'Task/Estimate Delimiter',
+      '',
+      'taskEstimateDelimiter',
+      'text',
+      ';'
+    );
+    this.createSetting(
+      'Start Time Delimiter',
+      '',
+      'startTimeDelimiter',
+      'text',
+      '@'
+    );
+    this.createSetting(
       'Date Delimiter',
       'Enter a regex that matches the delimiter for a new day.',
       'dateDelimiter',
       'text',
       '^---$'
     );
+
+    const headerNames = this.plugin.settings.headerNames.join(', ');
+    this.createSetting(
+      'Header Names',
+      'Enter header names, separated by commas.',
+      'headerNames',
+      'text',
+      headerNames
+    );
+
     this.createSetting(
       'Enable Overdue Notice',
       '',
       'enableOverdueNotice',
-      'toggle'
-    );
-    this.createSetting(
-      'Show Completed Tasks',
-      'If enabled, displays completed tasks in the timetable.',
-      'showCompletedTasks',
       'toggle'
     );
   }
