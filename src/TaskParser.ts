@@ -4,6 +4,8 @@ export class TaskParser {
   private static readonly TASK_NAME_REGEX = /^[-+*]\s*\[\s*.\s*\]/;
   private static readonly LINK_REGEX = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
   private static readonly MARKDOWN_LINK_REGEX = /\[([^\[\]]+)\]\(.+?\)/g;
+  private static readonly UNCHECKED_TASK_PREFIXES = ['- [ ]', '+ [ ]', '* [ ]'];
+  private static readonly CHECKED_TASK_PREFIXES = ['- [x]', '+ [x]', '* [x]'];
 
   private taskNameRegex: RegExp;
   private linkRegex: RegExp;
@@ -44,7 +46,7 @@ export class TaskParser {
   }
 
   public getTopUncompletedTask(content: string): Task | null {
-    const tasks = this.filterAndParseTasks(content);
+    const tasks = this.parseTasksFromContent(content);
     for (const task of tasks) {
       if (!task.isChecked) {
         return task;
@@ -53,7 +55,7 @@ export class TaskParser {
     return null;
   }
 
-  public filterAndParseTasks(content: string): Task[] {
+  public parseTasksFromContent(content: string): Task[] {
     const lines = content.split('\n').map((line) => line.trim());
     const currentDate = new Date();
     let nextDay = 0;
@@ -65,38 +67,21 @@ export class TaskParser {
     let foundTask = false;
 
     for (let line of lines) {
-      if (new RegExp(this.dateDelimiter).test(line)) {
+      if (this.isDateDelimiterLine(line)) {
         if (foundTask) {
           nextDay += 1;
         }
         continue;
       }
 
-      if (
-        !line.startsWith('- [ ]') &&
-        !line.startsWith('+ [ ]') &&
-        !line.startsWith('* [ ]') &&
-        !line.startsWith('- [x]') &&
-        !line.startsWith('+ [x]') &&
-        !line.startsWith('* [x]')
-      ) {
-        continue;
-      }
-
-      if (
-        !line.includes(this.separator) &&
-        !line.includes(this.startTimeDelimiter)
-      ) {
+      if (!this.isTaskLine(line)) {
         continue;
       }
 
       const taskName = this.parseTaskName(line);
       const startTime = this.parseStartTime(line, currentDate, nextDay);
       const estimate = this.parseEstimate(line);
-      const isChecked =
-        line.startsWith('- [x]') ||
-        line.startsWith('+ [x]') ||
-        line.startsWith('* [x]');
+      const isChecked = this.isCheckedTaskLine(line);
 
       const task = {
         task: taskName,
@@ -123,6 +108,27 @@ export class TaskParser {
     }
 
     return [...uncompletedTasks, ...completedTasks];
+  }
+
+  private isDateDelimiterLine(line: string): boolean {
+    return new RegExp(this.dateDelimiter).test(line);
+  }
+
+  private isTaskLine(line: string): boolean {
+    const allTaskPrefixes = [
+      ...TaskParser.UNCHECKED_TASK_PREFIXES,
+      ...TaskParser.CHECKED_TASK_PREFIXES,
+    ];
+    return (
+      allTaskPrefixes.some((prefix) => line.startsWith(prefix)) &&
+      (line.includes(this.separator) || line.includes(this.startTimeDelimiter))
+    );
+  }
+
+  private isCheckedTaskLine(line: string): boolean {
+    return TaskParser.CHECKED_TASK_PREFIXES.some((prefix) =>
+      line.startsWith(prefix)
+    );
   }
 
   public parseTaskName(taskName: string): string {

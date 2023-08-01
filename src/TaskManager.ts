@@ -18,7 +18,7 @@ export class TaskManager {
       this.plugin.targetFile
     );
     this.taskParser = TaskParser.fromSettings(this.plugin.settings);
-    let tasks = this.taskParser.filterAndParseTasks(content);
+    let tasks = this.taskParser.parseTasksFromContent(content);
 
     if (tasks.length > 0 && tasks[0].startTime === null) {
       tasks[0].startTime = new Date(this.plugin.targetFile.stat.mtime);

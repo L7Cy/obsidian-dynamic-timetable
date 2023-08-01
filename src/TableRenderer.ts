@@ -82,7 +82,7 @@ export class TableRenderer {
         return;
       }
       const content = await this.plugin.app.vault.read(this.plugin.targetFile);
-      const task = this.plugin.taskParser.filterAndParseTasks(content)[0];
+      const task = this.plugin.taskParser.parseTasksFromContent(content)[0];
       if (task && this.plugin.timetableView) {
         try {
           await this.plugin.timetableView.completeTask(task);
@@ -110,7 +110,7 @@ export class TableRenderer {
         return;
       }
       const content = await this.plugin.app.vault.read(this.plugin.targetFile);
-      const task = this.plugin.taskParser.filterAndParseTasks(content)[0];
+      const task = this.plugin.taskParser.parseTasksFromContent(content)[0];
       if (task && this.plugin.timetableView) {
         try {
           await this.plugin.timetableView.interruptTask(task);

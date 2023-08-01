@@ -115,7 +115,7 @@ export default class DynamicTimetable extends Plugin {
         return;
       }
       const content = await this.app.vault.read(this.targetFile);
-      const task = this.taskParser.filterAndParseTasks(content)[0];
+      const task = this.taskParser.parseTasksFromContent(content)[0];
       if (task && this.timetableView) {
         await this.timetableView.completeTask(task);
       }
@@ -126,7 +126,7 @@ export default class DynamicTimetable extends Plugin {
         return;
       }
       const content = await this.app.vault.read(this.targetFile);
-      const task = this.taskParser.filterAndParseTasks(content)[0];
+      const task = this.taskParser.parseTasksFromContent(content)[0];
       if (task && this.timetableView) {
         await this.timetableView.interruptTask(task);
       }
