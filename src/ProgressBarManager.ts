@@ -16,24 +16,30 @@ export class ProgressBarManager {
   }
 
   createOrUpdateProgressBar(duration: number, estimate: number): void {
-    let progressBarContainer = this.contentEl.querySelector(
-      '.' + ProgressBarManager.PROGRESS_BAR_CLASS + '-container'
-    ) as HTMLElement;
-    if (!progressBarContainer) {
-      progressBarContainer = this.contentEl.createEl('div');
-      progressBarContainer.addClass(
-        ProgressBarManager.PROGRESS_BAR_CLASS + '-container'
-      );
-    }
-    let progressBar = progressBarContainer.querySelector(
-      '.' + ProgressBarManager.PROGRESS_BAR_CLASS
-    ) as HTMLElement;
-    if (!progressBar) {
-      progressBar = progressBarContainer.createEl('div');
-      progressBar.addClass(ProgressBarManager.PROGRESS_BAR_CLASS);
-    }
+    const progressBarContainer = this.getOrCreateElement(
+      this.contentEl,
+      ProgressBarManager.PROGRESS_BAR_CLASS + '-container'
+    );
+
+    const progressBar = this.getOrCreateElement(
+      progressBarContainer,
+      ProgressBarManager.PROGRESS_BAR_CLASS
+    );
+
     const width = Math.min((duration / estimate) * 100, 100);
     this.updateProgressBarStyle(progressBar, width);
+  }
+
+  private getOrCreateElement(
+    parent: HTMLElement,
+    className: string
+  ): HTMLElement {
+    let element = parent.querySelector('.' + className) as HTMLElement;
+    if (!element) {
+      element = parent.createEl('div');
+      element.addClass(className);
+    }
+    return element;
   }
 
   private updateProgressBarStyle(
@@ -42,14 +48,22 @@ export class ProgressBarManager {
   ): void {
     progressBar.style.width = width + '%';
     if (width === 100) {
-      progressBar.addClass(ProgressBarManager.PROGRESS_BAR_OVERDUE_CLASS);
-      this.createNotice();
+      this.markProgressBarAsOverdue(progressBar);
     } else {
-      progressBar.removeClass(ProgressBarManager.PROGRESS_BAR_OVERDUE_CLASS);
-      if (this.overdueNotice) {
-        this.overdueNotice.hide();
-        this.overdueNotice = null;
-      }
+      this.markProgressBarAsNotOverdue(progressBar);
+    }
+  }
+
+  private markProgressBarAsOverdue(progressBar: HTMLElement): void {
+    progressBar.addClass(ProgressBarManager.PROGRESS_BAR_OVERDUE_CLASS);
+    this.createNotice();
+  }
+
+  private markProgressBarAsNotOverdue(progressBar: HTMLElement): void {
+    progressBar.removeClass(ProgressBarManager.PROGRESS_BAR_OVERDUE_CLASS);
+    if (this.overdueNotice) {
+      this.overdueNotice.hide();
+      this.overdueNotice = null;
     }
   }
 
