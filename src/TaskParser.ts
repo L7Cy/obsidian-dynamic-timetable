@@ -18,8 +18,7 @@ export class TaskParser {
     private startTimeDelimiter: string,
     dateDelimiter: string,
     private showStartTimeInTaskName: boolean,
-    private showEstimateInTaskName: boolean,
-    private showCompletedTasks: boolean
+    private showEstimateInTaskName: boolean
   ) {
     this.taskNameRegex = TaskParser.TASK_NAME_REGEX;
     this.linkRegex = TaskParser.LINK_REGEX;
@@ -32,7 +31,6 @@ export class TaskParser {
       `\\${startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}\\:?\\d{2})`
     );
     this.dateDelimiter = dateDelimiter ? new RegExp(dateDelimiter) : /(?!x)x/;
-    this.showCompletedTasks = showCompletedTasks;
   }
 
   static fromSettings(settings: DynamicTimetableSettings): TaskParser {
@@ -41,8 +39,7 @@ export class TaskParser {
       settings.startTimeDelimiter,
       settings.dateDelimiter,
       settings.showStartTimeInTaskName,
-      settings.showEstimateInTaskName,
-      settings.showCompletedTasks
+      settings.showEstimateInTaskName
     );
   }
 
@@ -75,24 +72,29 @@ export class TaskParser {
         continue;
       }
 
-      if (!line.startsWith('- [ ]') &&
+      if (
+        !line.startsWith('- [ ]') &&
         !line.startsWith('+ [ ]') &&
         !line.startsWith('* [ ]') &&
         !line.startsWith('- [x]') &&
         !line.startsWith('+ [x]') &&
-        !line.startsWith('* [x]')) {
+        !line.startsWith('* [x]')
+      ) {
         continue;
       }
 
-      if (!line.includes(this.separator) &&
-        !line.includes(this.startTimeDelimiter)) {
+      if (
+        !line.includes(this.separator) &&
+        !line.includes(this.startTimeDelimiter)
+      ) {
         continue;
       }
 
       const taskName = this.parseTaskName(line);
       const startTime = this.parseStartTime(line, currentDate, nextDay);
       const estimate = this.parseEstimate(line);
-      const isChecked = line.startsWith('- [x]') ||
+      const isChecked =
+        line.startsWith('- [x]') ||
         line.startsWith('+ [x]') ||
         line.startsWith('* [x]');
 
@@ -165,11 +167,12 @@ export class TaskParser {
         return parsedDateTime;
       }
     } else if (timeMatch) {
-      const timeSplit = timeMatch[1].split(':').length == 1
-        ? timeMatch[1].length == 3
-          ? [timeMatch[1].substring(0, 1), timeMatch[1].substring(1, 3)]
-          : [timeMatch[1].substring(0, 2), timeMatch[1].substring(2, 4)]
-        : timeMatch[1].split(':');
+      const timeSplit =
+        timeMatch[1].split(':').length == 1
+          ? timeMatch[1].length == 3
+            ? [timeMatch[1].substring(0, 1), timeMatch[1].substring(1, 3)]
+            : [timeMatch[1].substring(0, 2), timeMatch[1].substring(2, 4)]
+          : timeMatch[1].split(':');
       const [hours, minutes] = timeSplit.map(Number);
 
       const startDate = new Date(currentDate.getTime());
