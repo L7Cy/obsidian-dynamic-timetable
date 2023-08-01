@@ -12,115 +12,70 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
   display(): void {
     this.containerEl.empty();
 
-    this.createSetting('Show Estimate Column', '', 'showEstimate', 'toggle');
-    this.createSetting('Show Start Time Column', '', 'showStartTime', 'toggle');
-    this.createSetting(
+    this.createToggleSetting('Show Estimate Column', 'showEstimate');
+    this.createToggleSetting('Show Start Time Column', 'showStartTime');
+    this.createToggleSetting(
       'Show Estimate in Task Name',
-      '',
-      'showEstimateInTaskName',
-      'toggle'
+      'showEstimateInTaskName'
     );
-    this.createSetting(
+    this.createToggleSetting(
       'Show Start Time in Task Name',
-      '',
-      'showStartTimeInTaskName',
-      'toggle'
+      'showStartTimeInTaskName'
     );
-    this.createSetting('Show Buffer Time Rows', '', 'showBufferTime', 'toggle');
-    this.createSetting(
+    this.createToggleSetting('Show Buffer Time Rows', 'showBufferTime');
+    this.createToggleSetting(
       'Show Completed Tasks',
-      'If enabled, displays completed tasks in the timetable.',
       'showCompletedTasks',
-      'toggle'
+      'If enabled, displays completed tasks in the timetable.'
     );
-    this.createSetting(
+    this.createToggleSetting(
       'Show Progress Bar',
-      'If enabled, displays a progress bar based on the top task estimate.',
       'showProgressBar',
-      'toggle'
+      'If enabled, displays a progress bar based on the top task estimate.'
     );
     if (this.plugin.settings.showProgressBar) {
-      this.createSetting(
+      this.createTextSetting(
         'Interval Time (Seconds)',
-        'Set the interval for updating the progress bar.',
         'intervalTime',
-        'text',
+        'Set the interval for updating the progress bar.',
         '1'
       );
     }
-    this.createSetting(
+    this.createTextSetting(
       'Task/Estimate Delimiter',
-      '',
       'taskEstimateDelimiter',
-      'text',
+      '',
       ';'
     );
-    this.createSetting(
+    this.createTextSetting(
       'Start Time Delimiter',
-      '',
       'startTimeDelimiter',
-      'text',
+      '',
       '@'
     );
-    this.createSetting(
+    this.createTextSetting(
       'Date Delimiter',
-      'Enter a regex that matches the delimiter for a new day.',
       'dateDelimiter',
-      'text',
+      'Enter a regex that matches the delimiter for a new day.',
       '^---$'
     );
-
-    const headerNames = this.plugin.settings.headerNames.join(', ');
-    this.createSetting(
-      'Header Names',
-      'Enter header names, separated by commas.',
-      'headerNames',
-      'text',
-      headerNames
-    );
-
-    this.createSetting(
-      'Enable Overdue Notice',
-      '',
-      'enableOverdueNotice',
-      'toggle'
-    );
-  }
-
-  /**
-   * Creates a new setting with the given parameters.
-   * @param {string} name - The name of the setting.
-   * @param {string} desc - The description of the setting.
-   * @param {string} key - The key for the setting.
-   * @param {'text' | 'toggle'} type - The type of the setting.
-   * @param {string} [placeholder] - The placeholder for the setting.
-   */
-  createSetting(
-    name: string,
-    desc: string,
-    key: string,
-    type: 'text' | 'toggle',
-    placeholder?: string
-  ) {
-    if (key === 'headerNames') {
-      this.createHeaderNamesSetting(placeholder || '');
-      return;
-    }
-
-    if (type === 'text') {
-      this.createTextSetting(name, desc, key, placeholder);
-    } else if (type === 'toggle') {
-      this.createToggleSetting(name, desc, key);
-    }
+    const headerNames = Array.isArray(this.plugin.settings.headerNames)
+      ? this.plugin.settings.headerNames.join(', ')
+      : '';
+    this.createHeaderNamesSetting(headerNames);
+    this.createToggleSetting('Enable Overdue Notice', 'enableOverdueNotice');
   }
 
   createTextSetting(
     name: string,
-    desc: string,
     key: string,
+    desc?: string,
     placeholder?: string
   ) {
-    const setting = new Setting(this.containerEl).setName(name).setDesc(desc);
+    const setting = new Setting(this.containerEl).setName(name);
+    if (desc) {
+      setting.setDesc(desc);
+    }
     setting.addText((text) => {
       const el = text
         .setPlaceholder(placeholder || '')
@@ -133,8 +88,11 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
     });
   }
 
-  createToggleSetting(name: string, desc: string, key: string) {
-    const setting = new Setting(this.containerEl).setName(name).setDesc(desc);
+  createToggleSetting(name: string, key: string, desc?: string) {
+    const setting = new Setting(this.containerEl).setName(name);
+    if (desc) {
+      setting.setDesc(desc);
+    }
     setting.addToggle((toggle) =>
       toggle
         .setValue(!!(this.plugin.settings[key] as boolean))
@@ -146,17 +104,20 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
   }
 
   createHeaderNamesSetting(headerNames: string) {
-    new Setting(this.containerEl).setName('Header Names').addText((text) => {
-      const el = text.setValue(headerNames);
-      el.inputEl.style.width = '-webkit-fill-available';
-      el.inputEl.addEventListener('blur', async (event) => {
-        const value = (event.target as HTMLInputElement).value
-          .split(',')
-          .map((s) => s.trim());
-        await this.plugin.updateSetting('headerNames', value);
-        this.display();
+    new Setting(this.containerEl)
+      .setName('Header Names')
+      .setDesc('Enter header names, separated by commas.')
+      .addText((text) => {
+        const el = text.setValue(headerNames);
+        el.inputEl.style.width = '-webkit-fill-available';
+        el.inputEl.addEventListener('blur', async (event) => {
+          const value = (event.target as HTMLInputElement).value
+            .split(',')
+            .map((s) => s.trim());
+          await this.plugin.updateSetting('headerNames', value);
+          this.display();
+        });
+        return el;
       });
-      return el;
-    });
   }
 }
