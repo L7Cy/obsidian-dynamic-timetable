@@ -1,7 +1,4 @@
-import {
-  Notice,
-  setIcon
-} from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
 import DynamicTimetable, { Task } from './main';
 import { ProgressBarManager } from './ProgressBarManager';
 
@@ -77,8 +74,10 @@ export class TableRenderer {
     completeButton.classList.add('dt-button', 'dt-complete-button');
     setIcon(completeButton, 'check-circle');
     completeButton.addEventListener('click', async () => {
-      if (this.plugin.targetFile === null ||
-        this.plugin.taskParser === undefined) {
+      if (
+        this.plugin.targetFile === null ||
+        this.plugin.taskParser === undefined
+      ) {
         new Notice('No tasks to complete!');
         return;
       }
@@ -103,8 +102,10 @@ export class TableRenderer {
     setIcon(interruptButton, 'circle-slash');
     interruptButton.classList.add('dt-button', 'dt-interrupt-button');
     interruptButton.addEventListener('click', async () => {
-      if (this.plugin.targetFile === null ||
-        this.plugin.taskParser === undefined) {
+      if (
+        this.plugin.targetFile === null ||
+        this.plugin.taskParser === undefined
+      ) {
         new Notice('No tasks to interrupt!');
         return;
       }
@@ -143,7 +144,10 @@ export class TableRenderer {
   private createTableHeader(): HTMLTableRowElement {
     const { headerNames, showEstimate, showStartTime } = this.plugin.settings;
     const [
-      taskHeaderName, estimateHeaderName, startTimeHeaderName, endHeaderName,
+      taskHeaderName,
+      estimateHeaderName,
+      startTimeHeaderName,
+      endHeaderName,
     ] = headerNames;
 
     const tableHeaderValues = [taskHeaderName];
@@ -161,7 +165,8 @@ export class TableRenderer {
     tableBody: HTMLTableSectionElement,
     tasks: Task[]
   ): void {
-    const { showEstimate, showStartTime, showBufferTime } = this.plugin.settings;
+    const { showEstimate, showStartTime, showBufferTime } =
+      this.plugin.settings;
 
     let currentTaskEndTime = new Date();
     let firstUncompletedTaskFound = false;
@@ -173,9 +178,13 @@ export class TableRenderer {
 
     for (const task of orderedTasks) {
       const {
-        task: parsedTaskName, estimate, startTime: taskStartTime, isChecked,
+        task: parsedTaskName,
+        estimate,
+        startTime: taskStartTime,
+        isChecked,
       } = task;
-      const minutes = estimate !== null && estimate !== undefined ? parseInt(estimate) : null;
+      const minutes =
+        estimate !== null && estimate !== undefined ? parseInt(estimate) : null;
       let startTime: Date | null = null;
 
       if (!firstUncompletedTaskFound && !isChecked) {
@@ -187,18 +196,19 @@ export class TableRenderer {
         startTime = currentTaskEndTime;
       }
 
-      let endTime = minutes !== null && startTime
-        ? new Date(
-          startTime.getTime() +
-          minutes * TableRenderer.MILLISECONDS_IN_MINUTE
-        )
-        : null;
+      let endTime =
+        minutes !== null && startTime
+          ? new Date(
+              startTime.getTime() +
+                minutes * TableRenderer.MILLISECONDS_IN_MINUTE
+            )
+          : null;
       let bufferMinutes: number | null = null;
 
       if (!isChecked && taskStartTime) {
         bufferMinutes = Math.ceil(
           (new Date(taskStartTime).getTime() - currentTaskEndTime.getTime()) /
-          TableRenderer.MILLISECONDS_IN_MINUTE
+            TableRenderer.MILLISECONDS_IN_MINUTE
         );
         if (showBufferTime && startTime !== currentTaskEndTime) {
           const bufferRow = this.createBufferRow(bufferMinutes);

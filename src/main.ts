@@ -1,9 +1,4 @@
-import {
-  Plugin,
-  WorkspaceLeaf,
-  TFile,
-  Notice,
-} from 'obsidian';
+import { Plugin, WorkspaceLeaf, TFile, Notice } from 'obsidian';
 import { DynamicTimetableSettingTab } from './settings';
 import { TaskParser } from './TaskParser';
 import { TimetableView } from './TimetableView';

@@ -1,7 +1,4 @@
-import {
-  WorkspaceLeaf,
-  ItemView, Notice
-} from 'obsidian';
+import { WorkspaceLeaf, ItemView, Notice } from 'obsidian';
 import { TableRenderer } from './TableRenderer';
 import { ProgressBarManager } from './ProgressBarManager';
 import { TaskManager } from './TaskManager';
@@ -94,7 +91,8 @@ export class TimetableView extends ItemView {
 
   private getDuration(task: Task): number {
     if (task && this.plugin.targetFile && task.previousEndTime) {
-      let duration = (new Date().getTime() - new Date(task.previousEndTime).getTime()) /
+      let duration =
+        (new Date().getTime() - new Date(task.previousEndTime).getTime()) /
         1000;
 
       if (duration < 0) {

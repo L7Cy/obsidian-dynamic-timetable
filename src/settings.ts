@@ -1,7 +1,4 @@
-import {
-  App, PluginSettingTab,
-  Setting
-} from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import DynamicTimetable from './main';
 
 export class DynamicTimetableSettingTab extends PluginSettingTab {
@@ -138,12 +135,13 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 
   createToggleSetting(name: string, desc: string, key: string) {
     const setting = new Setting(this.containerEl).setName(name).setDesc(desc);
-    setting.addToggle((toggle) => toggle
-      .setValue(!!(this.plugin.settings[key] as boolean))
-      .onChange(async (value) => {
-        await this.plugin.updateSetting(key, value);
-        this.display();
-      })
+    setting.addToggle((toggle) =>
+      toggle
+        .setValue(!!(this.plugin.settings[key] as boolean))
+        .onChange(async (value) => {
+          await this.plugin.updateSetting(key, value);
+          this.display();
+        })
     );
   }
 

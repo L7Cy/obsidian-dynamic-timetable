@@ -1,11 +1,11 @@
 import { Notice } from 'obsidian';
 import DynamicTimetable from './main';
 
-
 export class ProgressBarManager {
   private overdueNotice: Notice | null = null;
   private static readonly PROGRESS_BAR_CLASS = 'dt-progress-bar';
-  private static readonly PROGRESS_BAR_OVERDUE_CLASS = 'dt-progress-bar-overdue';
+  private static readonly PROGRESS_BAR_OVERDUE_CLASS =
+    'dt-progress-bar-overdue';
 
   private plugin: DynamicTimetable;
   private contentEl: HTMLElement;

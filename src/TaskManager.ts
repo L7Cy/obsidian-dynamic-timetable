@@ -110,12 +110,16 @@ export class TaskManager {
       const taskMatch = lines[i].match(taskRegex);
       if (taskMatch) {
         const originalTaskName = taskMatch[1];
-        let newTaskLine = `- [x] ${originalTaskName} ${this.plugin.settings.taskEstimateDelimiter} ${elapsedTime.toFixed(0)}`;
+        let newTaskLine = `- [x] ${originalTaskName} ${
+          this.plugin.settings.taskEstimateDelimiter
+        } ${elapsedTime.toFixed(0)}`;
 
         newTaskLine += ` @ ${this.formatTime(actualStartTime)}`;
 
         if (remainingTime !== undefined) {
-          newTaskLine += `\n- [ ] ${originalTaskName} ${this.plugin.settings.taskEstimateDelimiter} ${remainingTime.toFixed(0)}`;
+          newTaskLine += `\n- [ ] ${originalTaskName} ${
+            this.plugin.settings.taskEstimateDelimiter
+          } ${remainingTime.toFixed(0)}`;
         }
         lines[i] = newTaskLine;
         break;
