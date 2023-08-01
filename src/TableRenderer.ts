@@ -69,70 +69,85 @@ export class TableRenderer {
     return scheduleTable;
   }
 
-  createCompleteButton() {
-    const completeButton = this.contentEl.createEl('button');
-    completeButton.classList.add('dt-button', 'dt-complete-button');
-    setIcon(completeButton, 'check-circle');
-    completeButton.addEventListener('click', async () => {
-      if (
-        this.plugin.targetFile === null ||
-        this.plugin.taskParser === undefined
-      ) {
-        new Notice('No tasks to complete!');
-        return;
+  private createButton(options: {
+    classNames: string[];
+    icon: string;
+    onClick: () => Promise<void>;
+    noticeMessage: string;
+  }): HTMLElement {
+    const button = this.contentEl.createEl('button');
+    button.classList.add('dt-button', ...options.classNames);
+    setIcon(button, options.icon);
+    button.addEventListener('click', async () => {
+      try {
+        await options.onClick();
+      } catch (error) {
+        new Notice(options.noticeMessage);
       }
-      const content = await this.plugin.app.vault.read(this.plugin.targetFile);
-      const task = this.plugin.taskParser.parseTasksFromContent(content)[0];
-      if (task && this.plugin.timetableView) {
-        try {
+    });
+    return button;
+  }
+
+  public createCompleteButton() {
+    return this.createButton({
+      classNames: ['dt-complete-button'],
+      icon: 'check-circle',
+      onClick: async () => {
+        if (
+          this.plugin.targetFile === null ||
+          this.plugin.taskParser === undefined
+        ) {
+          throw new Error();
+        }
+        const content = await this.plugin.app.vault.read(
+          this.plugin.targetFile
+        );
+        const task = this.plugin.taskParser.parseTasksFromContent(content)[0];
+        if (task && this.plugin.timetableView) {
           await this.plugin.timetableView.completeTask(task);
-        } catch (error) {
-          new Notice('Task completion failed!');
+        } else {
+          throw new Error();
         }
-      } else {
-        new Notice('No tasks to complete!');
-      }
+      },
+      noticeMessage: 'No tasks to complete!',
     });
-    return completeButton;
   }
 
-  createInterruptButton() {
-    const interruptButton = this.contentEl.createEl('button');
-    interruptButton.classList.add('dt-button', 'dt-interrupt-button');
-    setIcon(interruptButton, 'circle-slash');
-    interruptButton.classList.add('dt-button', 'dt-interrupt-button');
-    interruptButton.addEventListener('click', async () => {
-      if (
-        this.plugin.targetFile === null ||
-        this.plugin.taskParser === undefined
-      ) {
-        new Notice('No tasks to interrupt!');
-        return;
-      }
-      const content = await this.plugin.app.vault.read(this.plugin.targetFile);
-      const task = this.plugin.taskParser.parseTasksFromContent(content)[0];
-      if (task && this.plugin.timetableView) {
-        try {
+  public createInterruptButton() {
+    return this.createButton({
+      classNames: ['dt-interrupt-button'],
+      icon: 'circle-slash',
+      onClick: async () => {
+        if (
+          this.plugin.targetFile === null ||
+          this.plugin.taskParser === undefined
+        ) {
+          throw new Error();
+        }
+        const content = await this.plugin.app.vault.read(
+          this.plugin.targetFile
+        );
+        const task = this.plugin.taskParser.parseTasksFromContent(content)[0];
+        if (task && this.plugin.timetableView) {
           await this.plugin.timetableView.interruptTask(task);
-        } catch (error) {
-          new Notice('Task interruption failed!');
+        } else {
+          throw new Error();
         }
-      } else {
-        new Notice('No tasks to interrupt!');
-      }
+      },
+      noticeMessage: 'No tasks to interrupt!',
     });
-    return interruptButton;
   }
 
-  createInitButton() {
-    const initButton = this.contentEl.createEl('button');
-    initButton.classList.add('dt-button', 'dt-init-button');
-    setIcon(initButton, 'refresh-cw');
-    initButton.addEventListener('click', async () => {
-      await this.plugin.initTimetableView();
-      new Notice('Timetable initialized!', 1000);
+  public createInitButton() {
+    return this.createButton({
+      classNames: ['dt-init-button'],
+      icon: 'refresh-cw',
+      onClick: async () => {
+        await this.plugin.initTimetableView();
+        new Notice('Timetable initialized!', 1000);
+      },
+      noticeMessage: 'Initialization failed!',
     });
-    return initButton;
   }
 
   private createTable(): HTMLTableElement {
