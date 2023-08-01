@@ -2,6 +2,12 @@ import { TaskParser } from './TaskParser';
 import { TableRenderer } from './TableRenderer';
 import DynamicTimetable, { Task } from './main';
 
+interface TaskUpdate {
+  task: Task;
+  elapsedTime: number;
+  remainingTime?: number;
+}
+
 export class TaskManager {
   private taskParser: TaskParser;
   private plugin: DynamicTimetable;
@@ -26,7 +32,7 @@ export class TaskManager {
     return tasks;
   }
 
-  async completeTask(task: Task): Promise<void> {
+  private async updateTask(task: Task, remainingTime?: number): Promise<void> {
     if (!this.plugin.targetFile || !task.estimate) {
       return;
     }
@@ -35,32 +41,26 @@ export class TaskManager {
       this.plugin.targetFile
     );
     let elapsedTime = this.getElapsedTime(task);
-    content = this.updateTaskInContent(content, task, elapsedTime);
+    const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
+    content = this.updateTaskInContent(content, taskUpdate);
 
     await this.plugin.app.vault.modify(this.plugin.targetFile, content);
   }
 
+  async completeTask(task: Task): Promise<void> {
+    this.updateTask(task);
+  }
+
   async interruptTask(task: Task): Promise<void> {
-    if (!this.plugin.targetFile || !task.estimate) {
-      return;
-    }
-
-    let content = await this.plugin.app.vault.cachedRead(
-      this.plugin.targetFile
-    );
     let elapsedTime = this.getElapsedTime(task);
-    let remainingTime = Math.max(
-      0,
-      Math.floor(parseFloat(task.estimate) - elapsedTime)
-    );
-    content = this.updateTaskInContent(
-      content,
-      task,
-      elapsedTime,
-      remainingTime
-    );
-
-    await this.plugin.app.vault.modify(this.plugin.targetFile, content);
+    let remainingTime = 0;
+    if (task.estimate !== null) {
+      remainingTime = Math.max(
+        0,
+        Math.floor(parseFloat(task.estimate) - elapsedTime)
+      );
+    }
+    this.updateTask(task, remainingTime);
   }
 
   private getElapsedTime(task: Task): number {
@@ -81,9 +81,7 @@ export class TaskManager {
 
   private updateTaskInContent(
     content: string,
-    task: Task,
-    elapsedTime: number,
-    remainingTime?: number
+    { task, elapsedTime, remainingTime }: TaskUpdate
   ): string {
     let startTime = task.task.match(
       new RegExp(`\\s*@\\s*(\\d{1,2}[:]?\\d{2})\\s*$`)
