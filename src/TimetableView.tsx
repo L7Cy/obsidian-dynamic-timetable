@@ -1,0 +1,134 @@
+import React, {
+	useEffect,
+	useState,
+	forwardRef,
+	useImperativeHandle,
+} from "react";
+import ReactDOM from "react-dom";
+import { WorkspaceLeaf, Notice, ItemView } from "obsidian";
+import DynamicTimetable from "./main";
+import { TaskParser } from "./TaskParser";
+
+type Task = {
+	task: string;
+	startTime: Date | null;
+	estimate: string | null;
+	endTime: Date | null;
+};
+
+export interface TimetableViewComponentRef {
+	update: () => Promise<void>;
+}
+
+const TimetableViewComponent = forwardRef<
+	TimetableViewComponentRef,
+	{ plugin: DynamicTimetable }
+>(({ plugin }, ref) => {
+	const [tasks, setTasks] = useState<Task[]>([]);
+	const taskParser = TaskParser.fromSettings(plugin.settings);
+
+	const update = async () => {
+		if (!plugin.targetFile) return;
+		const content = await plugin.app.vault.cachedRead(plugin.targetFile);
+		const parsedTasks = taskParser.filterAndParseTasks(content);
+		setTasks(parsedTasks);
+	};
+
+	useImperativeHandle(ref, () => ({
+		update,
+	}));
+
+	useEffect(() => {
+		const onFileModify = async (file: any) => {
+			if (file === plugin.targetFile) {
+				await update();
+				new Notice("Timetable updated!");
+			}
+		};
+		const unregisterEvent = plugin.app.vault.on("modify", onFileModify);
+		plugin.registerEvent(unregisterEvent);
+
+		update();
+
+		return () => plugin.app.vault.off("modify", onFileModify);
+	}, [plugin]);
+
+	return (
+		<div className="Timetable">
+			<button onClick={update}>Update</button>
+			<table>
+				<thead>
+					<tr>
+						<th>Task</th>
+						<th>Estimate</th>
+						<th>Start</th>
+						<th>End</th>
+					</tr>
+				</thead>
+				<tbody>
+					{tasks.map((task) => (
+						<tr>
+							<td>{task.task}</td>
+							<td>{task.estimate}</td>
+							<td>
+								{task.startTime
+									? formatDateToTime(task.startTime)
+									: ""}
+							</td>
+							<td>
+								{task.endTime
+									? formatDateToTime(task.endTime)
+									: ""}
+							</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
+});
+
+const formatDateToTime = (date: Date) => {
+	const hours = date.getHours().toString().padStart(2, "0");
+	const minutes = date.getMinutes().toString().padStart(2, "0");
+	return `${hours}:${minutes}`;
+};
+
+export class TimetableView extends ItemView {
+	private readonly plugin: DynamicTimetable;
+	private componentRef: React.RefObject<TimetableViewComponentRef>;
+
+	constructor(leaf: WorkspaceLeaf, plugin: DynamicTimetable) {
+		super(leaf);
+		this.plugin = plugin;
+		this.componentRef = React.createRef<TimetableViewComponentRef>();
+	}
+
+	getViewType(): string {
+		return "Timetable";
+	}
+
+	getDisplayText(): string {
+		return "Timetable";
+	}
+
+	async onOpen(): Promise<void> {
+		ReactDOM.render(
+			<TimetableViewComponent
+				plugin={this.plugin}
+				ref={this.componentRef}
+			/>,
+			this.containerEl
+		);
+	}
+
+	async onClose(): Promise<void> {
+		ReactDOM.unmountComponentAtNode(this.containerEl);
+	}
+
+	async update() {
+		if (this.componentRef.current) {
+			this.componentRef.current.update();
+		}
+	}
+}

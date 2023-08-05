@@ -34,7 +34,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 		const filePathSetting = new Setting(this.containerEl)
 			.setName("File Path")
 			.setDesc(
-				"Enter the path to the Markdown file to get task list from. Leave blank to use active file.",
+				"Enter the path to the Markdown file to get task list from. Leave blank to use active file."
 			)
 			.addText((text) => {
 				const el = text
@@ -42,7 +42,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.filePath || "");
 				el.inputEl.addEventListener(
 					"change",
-					this.onFilePathChange.bind(this),
+					this.onFilePathChange.bind(this)
 				);
 				return el;
 			});
@@ -59,7 +59,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.showEstimate)
 					.onChange(async (value) => {
 						await this.updateSetting("showEstimate", value);
-					}),
+					})
 			);
 
 		return showEstimateSetting;
@@ -74,7 +74,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.showStartTime)
 					.onChange(async (value) => {
 						await this.updateSetting("showStartTime", value);
-					}),
+					})
 			);
 
 		return showStartTimeSetting;
@@ -84,7 +84,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 		const showEstimateInTaskNameSetting = new Setting(this.containerEl)
 			.setName("Show estimate in task name")
 			.setDesc(
-				"Include estimate time with the delimiter in the task name",
+				"Include estimate time with the delimiter in the task name"
 			)
 			.addToggle((toggle) =>
 				toggle
@@ -93,9 +93,9 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 						this.plugin.settings.showEstimateInTaskName = value;
 						await this.updateSetting(
 							"showEstimateInTaskName",
-							value,
+							value
 						);
-					}),
+					})
 			);
 
 		return showEstimateInTaskNameSetting;
@@ -111,7 +111,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.showStartTimeInTaskName = value;
 						await this.updateSetting("showStartInTaskName", value);
-					}),
+					})
 			);
 
 		return showStartInTaskNameSetting;
@@ -121,7 +121,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 		const taskEstimateDelimiterSetting = new Setting(this.containerEl)
 			.setName("Task/Estimate Delimiter")
 			.setDesc(
-				"Enter the delimiter to use between the task name and estimate",
+				"Enter the delimiter to use between the task name and estimate"
 			)
 			.addText((text) => {
 				const el = text
@@ -144,7 +144,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 		const startTimeDelimiterSetting = new Setting(this.containerEl)
 			.setName("Start Time Delimiter")
 			.setDesc(
-				"Enter the delimiter to use between the task name and start time",
+				"Enter the delimiter to use between the task name and start time"
 			)
 			.addText((text) => {
 				const el = text
@@ -165,7 +165,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 
 	private createHeaderNameSetting(
 		headerName: string,
-		index: number,
+		index: number
 	): Setting {
 		const headerNameSetting = new Setting(this.containerEl)
 			.setName(`Header Name ${index + 1}`)
@@ -175,7 +175,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 					const headerNames = [...this.plugin.settings.headerNames];
 					headerNames[index] = value;
 					await this.updateSetting("headerNames", headerNames);
-				}),
+				})
 			);
 
 		return headerNameSetting;
@@ -191,13 +191,13 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 
 	private async updateSetting<T extends keyof DynamicTimetableSettings>(
 		settingName: T,
-		newValue: DynamicTimetableSettings[T],
+		newValue: DynamicTimetableSettings[T]
 	): Promise<void> {
 		this.plugin.settings[settingName] = newValue;
 		await this.plugin.saveData(this.plugin.settings);
 
 		for (let leaf of this.plugin.app.workspace.getLeavesOfType(
-			"Timetable",
+			"Timetable"
 		)) {
 			let view = leaf.view;
 			if (view instanceof TimetableView) {

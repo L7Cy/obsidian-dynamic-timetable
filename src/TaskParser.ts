@@ -5,7 +5,7 @@ export class TaskParser {
 		private separator: string,
 		private startTimeDelimiter: string,
 		private showStartTimeInTaskName: boolean,
-		private showEstimateInTaskName: boolean,
+		private showEstimateInTaskName: boolean
 	) {}
 
 	static fromSettings(settings: DynamicTimetableSettings): TaskParser {
@@ -13,30 +13,48 @@ export class TaskParser {
 			settings.taskEstimateDelimiter,
 			settings.startTimeDelimiter,
 			settings.showStartTimeInTaskName,
-			settings.showEstimateInTaskName,
+			settings.showEstimateInTaskName
 		);
 	}
 
 	public filterAndParseTasks(content: string): Task[] {
+		let previousEndTime: Date | null = null;
+
 		const tasks = content
 			.split("\n")
 			.map((line) => line.trim())
-			.filter((line) => line.startsWith("- [ ]"))
+			.filter(
+				(line) => line.startsWith("- [ ]") || line.startsWith("- [x]")
+			)
 			.filter(
 				(task) =>
 					task.includes(this.separator) ||
-					task.includes(this.startTimeDelimiter),
+					task.includes(this.startTimeDelimiter)
 			)
 			.map((task) => {
 				const taskName = this.parseTaskName(task);
-				const startTime = this.parseStartTime(task);
+				let startTime = this.parseStartTime(task);
 				const estimate = this.parseEstimate(task);
+
+				if (!startTime && previousEndTime) {
+					startTime = previousEndTime;
+				}
+
+				let endTime: Date | null = null;
+				if (startTime && estimate) {
+					endTime = new Date(startTime);
+					endTime.setMinutes(endTime.getMinutes() + Number(estimate));
+					previousEndTime = endTime;
+				}
+
 				return {
 					task: taskName,
 					startTime: startTime,
 					estimate: estimate,
+					endTime: endTime,
 				};
 			});
+
 		return tasks;
 	}
 
@@ -53,13 +71,13 @@ export class TaskParser {
 			.trim();
 
 		const startTimeRegex = new RegExp(
-			`\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:\\d{2})`,
+			`\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:\\d{2})`
 		);
 
 		if (this.showStartTimeInTaskName) {
 			taskName = taskName.replace(
 				startTimeRegex,
-				(match, p1) => `${this.startTimeDelimiter}${p1}`,
+				(match, p1) => `${this.startTimeDelimiter}${p1}`
 			);
 		} else {
 			taskName = taskName.replace(startTimeRegex, "").trim();
@@ -75,10 +93,10 @@ export class TaskParser {
 
 	public parseStartTime(task: string): Date | null {
 		const timeRegex = new RegExp(
-			`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:\\d{2})`,
+			`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:\\d{2})`
 		);
 		const dateTimeRegex = new RegExp(
-			`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}:\\d{2})`,
+			`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}:\\d{2})`
 		);
 
 		const timeMatch = task.match(timeRegex);

@@ -6,6 +6,7 @@ export interface Task {
 	task: string;
 	startTime: Date | null;
 	estimate: string | null;
+	endTime: Date | null;
 }
 
 export interface DynamicTimetableSettings {
@@ -57,7 +58,7 @@ export default class DynamicTimetable extends Plugin {
 		this.addToggleTimetableCommand();
 		this.registerView(
 			"Timetable",
-			(leaf: WorkspaceLeaf) => new TimetableView(leaf, this),
+			(leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
 		);
 
 		if (this.app.workspace.layoutReady) {
@@ -66,8 +67,8 @@ export default class DynamicTimetable extends Plugin {
 			this.registerEvent(
 				this.app.workspace.on(
 					"layout-ready",
-					this.initTimetableView.bind(this),
-				),
+					this.initTimetableView.bind(this)
+				)
 			);
 		}
 	}
