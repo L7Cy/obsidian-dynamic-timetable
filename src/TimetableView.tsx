@@ -37,6 +37,20 @@ const TimetableViewComponent = forwardRef<
 		return `${hours}:${minutes}`;
 	};
 
+	const calculateBufferTime = (
+		currentTaskEndTime: Date | null,
+		taskStartTime: Date | null
+	): number | null => {
+		if (currentTaskEndTime && taskStartTime) {
+			const bufferMinutes = Math.ceil(
+				(taskStartTime.getTime() - currentTaskEndTime.getTime()) /
+					(60 * 1000)
+			);
+			return bufferMinutes;
+		}
+		return null;
+	};
+
 	const update = async () => {
 		if (!plugin.targetFile) return;
 		const content = await plugin.app.vault.cachedRead(plugin.targetFile);
@@ -102,18 +116,26 @@ const TimetableViewComponent = forwardRef<
 	return (
 		<div
 			ref={containerRef}
-			className="Timetable"
+			className="Timetable dt-content"
 			style={{ overflow: "auto", maxHeight: "100%" }}
 		>
 			{plugin.settings.showProgressBar && (
 				<div
 					className={
-						ProgressBarManager.PROGRESS_BAR_CLASS + "-container"
+						ProgressBarManager.PROGRESS_BAR_CLASS +
+						"-container dt-progress-bar-container"
 					}
 				></div>
 			)}
-			<button onClick={() => plugin.initTimetableView()}>Init</button>
-			<table>
+			<div className="dt-button-container">
+				<button
+					className="dt-button"
+					onClick={() => plugin.initTimetableView()}
+				>
+					Init
+				</button>
+			</div>
+			<table className="dt-table">
 				<thead>
 					<tr>
 						<th>Task</th>
@@ -123,26 +145,66 @@ const TimetableViewComponent = forwardRef<
 					</tr>
 				</thead>
 				<tbody>
-					{filteredTasks.map((task, index) => (
-						<tr key={index}>
-							<td>{task.task}</td>
-							{plugin.settings.showEstimate && (
-								<td>{task.estimate}</td>
-							)}
-							{plugin.settings.showStartTime && (
+					{filteredTasks.flatMap((task, index, allTasks) => {
+						const previousTask = allTasks[index - 1];
+						const bufferTime =
+							previousTask &&
+							calculateBufferTime(
+								previousTask.endTime || new Date(),
+								task.startTime
+							);
+
+						let bufferClass = "";
+						if (bufferTime && !task.isCompleted) {
+							bufferClass = bufferTime < 0 ? "late" : "on-time";
+						}
+
+						const rows: JSX.Element[] = [];
+
+						if (
+							bufferTime &&
+							plugin.settings.showBufferTime &&
+							!task.isCompleted
+						) {
+							rows.push(
+								<tr
+									key={`buffer-${index}`}
+									className="buffer-time dt-buffer-time"
+								>
+									<td>Buffer Time</td>
+									<td colSpan={3}>{bufferTime}m</td>
+								</tr>
+							);
+						}
+
+						rows.push(
+							<tr
+								key={`task-${index}`}
+								className={`${bufferClass} ${
+									task.isCompleted ? "dt-completed" : ""
+								}`}
+							>
+								<td>{task.task}</td>
+								{plugin.settings.showEstimate && (
+									<td>{task.estimate}</td>
+								)}
+								{plugin.settings.showStartTime && (
+									<td>
+										{task.startTime
+											? formatDateToTime(task.startTime)
+											: ""}
+									</td>
+								)}
 								<td>
-									{task.startTime
-										? formatDateToTime(task.startTime)
+									{task.endTime
+										? formatDateToTime(task.endTime)
 										: ""}
 								</td>
-							)}
-							<td>
-								{task.endTime
-									? formatDateToTime(task.endTime)
-									: ""}
-							</td>
-						</tr>
-					))}
+							</tr>
+						);
+
+						return rows;
+					})}
 				</tbody>
 			</table>
 		</div>
