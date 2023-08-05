@@ -86,18 +86,20 @@ export default class DynamicTimetable extends Plugin {
 		}
 	}
 
+	async updateSetting<T extends keyof DynamicTimetableSettings>(
+		settingName: T,
+		newValue: DynamicTimetableSettings[T]
+	): Promise<void> {
+		this.settings[settingName] = newValue;
+		await this.saveData(this.settings);
+		await this.updateOpenTimetableViews();
+	}
+
 	async initTimetableView() {
-		const leaves = this.app.workspace.getLeavesOfType("Timetable");
-		if (leaves.length == 0) {
+		if (!this.isTimetableOpen()) {
 			this.openTimetable();
 		} else {
-			for (let leaf of leaves) {
-				let view = leaf.view;
-				if (view instanceof TimetableView) {
-					this.checkTargetFile();
-					await view.update();
-				}
-			}
+			this.updateOpenTimetableViews();
 		}
 	}
 
@@ -116,6 +118,20 @@ export default class DynamicTimetable extends Plugin {
 		});
 	}
 
+	async updateOpenTimetableViews() {
+		for (const leaf of this.app.workspace.getLeavesOfType("Timetable")) {
+			const view = leaf.view;
+			if (view instanceof TimetableView) {
+				this.checkTargetFile();
+				await view.update();
+			}
+		}
+	}
+
+	isTimetableOpen(): boolean {
+		return this.app.workspace.getLeavesOfType("Timetable").length > 0;
+	}
+
 	async openTimetable() {
 		this.checkTargetFile();
 		const leaf = this.app.workspace.getRightLeaf(false);
@@ -128,15 +144,24 @@ export default class DynamicTimetable extends Plugin {
 	}
 
 	checkTargetFile() {
-		const abstractFile = this.settings.filePath
-			? this.app.vault.getAbstractFileByPath(this.settings.filePath)
-			: this.app.workspace.getActiveFile();
+		const abstractFile =
+			this.targetFile === null && this.settings.filePath
+				? this.app.vault.getAbstractFileByPath(this.settings.filePath)
+				: this.app.workspace.getActiveFile();
 
 		if (abstractFile instanceof TFile) {
-			this.targetFile = abstractFile;
+			if (this.targetFile !== abstractFile) {
+				this.targetFile = abstractFile;
+				this.updateFilePathSetting(abstractFile.path);
+			}
 		} else {
 			this.targetFile = null;
 			new Notice("No active file or active file is not a Markdown file");
 		}
+	}
+
+	async updateFilePathSetting(newPath: string): Promise<void> {
+		this.settings.filePath = newPath;
+		await this.saveData(this.settings);
 	}
 }

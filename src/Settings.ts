@@ -1,6 +1,5 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import { TimetableView } from "./TimetableView";
-import DynamicTimetable, { DynamicTimetableSettings } from "./main";
+import DynamicTimetable from "./main";
 
 export class DynamicTimetableSettingTab extends PluginSettingTab {
 	plugin: DynamicTimetable;
@@ -13,196 +12,115 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
 	display(): void {
 		this.containerEl.empty();
 
-		this.createFilePathSetting();
-		this.createShowEstimateSetting();
-		this.createShowStartTimeSetting();
-		this.createShowEstimateInTaskNameSetting();
-		this.createShowStartTimeInTaskNameSetting();
-		this.createTaskEstimateDelimiterSetting();
-		this.createStartTimeDelimiterSetting();
+		this.createToggleSetting("Show Estimate Column", "showEstimate");
+		this.createToggleSetting("Show Start Time Column", "showStartTime");
+		this.createToggleSetting(
+			"Show Estimate in Task Name",
+			"showEstimateInTaskName"
+		);
+		this.createToggleSetting(
+			"Show Start Time in Task Name",
+			"showStartTimeInTaskName"
+		);
+		this.createToggleSetting("Show Buffer Time Rows", "showBufferTime");
+		this.createToggleSetting(
+			"Show Completed Tasks",
+			"showCompletedTasks",
+			"If enabled, displays completed tasks in the timetable."
+		);
+		this.createToggleSetting(
+			"Show Progress Bar",
+			"showProgressBar",
+			"If enabled, displays a progress bar based on the top task estimate."
+		);
+		if (this.plugin.settings.showProgressBar) {
+			this.createTextSetting(
+				"Interval Time (Seconds)",
+				"intervalTime",
+				"Set the interval for updating the progress bar.",
+				"1"
+			);
+		}
+		this.createTextSetting(
+			"Task/Estimate Delimiter",
+			"taskEstimateDelimiter",
+			"",
+			";"
+		);
+		this.createTextSetting(
+			"Start Time Delimiter",
+			"startTimeDelimiter",
+			"",
+			"@"
+		);
+		this.createTextSetting(
+			"Date Delimiter",
+			"dateDelimiter",
+			"Enter a regex that matches the delimiter for a new day.",
+			"^---$"
+		);
+		const headerNames = Array.isArray(this.plugin.settings.headerNames)
+			? this.plugin.settings.headerNames.join(", ")
+			: "";
+		this.createHeaderNamesSetting(headerNames);
+		this.createToggleSetting(
+			"Enable Overdue Notice",
+			"enableOverdueNotice"
+		);
+	}
 
-		const defaultHeaderNames =
-			DynamicTimetable.DEFAULT_SETTINGS.headerNames;
-		defaultHeaderNames.forEach((defaultHeaderName, index) => {
-			const headerName =
-				this.plugin.settings.headerNames[index] || defaultHeaderName;
-			this.createHeaderNameSetting(headerName, index);
+	createTextSetting(
+		name: string,
+		key: string,
+		desc?: string,
+		placeholder?: string
+	) {
+		const setting = new Setting(this.containerEl).setName(name);
+		if (desc) {
+			setting.setDesc(desc);
+		}
+		setting.addText((text) => {
+			const el = text
+				.setPlaceholder(placeholder || "")
+				.setValue((this.plugin.settings[key] as string) || "");
+			el.inputEl.addEventListener("blur", async (event) => {
+				const value = (event.target as HTMLInputElement).value;
+				await this.plugin.updateSetting(key, value);
+			});
+			return el;
 		});
 	}
 
-	private createFilePathSetting(): Setting {
-		const filePathSetting = new Setting(this.containerEl)
-			.setName("File Path")
-			.setDesc(
-				"Enter the path to the Markdown file to get task list from. Leave blank to use active file."
-			)
-			.addText((text) => {
-				const el = text
-					.setPlaceholder("/path/to/target/file.md")
-					.setValue(this.plugin.settings.filePath || "");
-				el.inputEl.addEventListener(
-					"change",
-					this.onFilePathChange.bind(this)
-				);
-				return el;
-			});
-
-		return filePathSetting;
-	}
-
-	private createShowEstimateSetting(): Setting {
-		const showEstimateSetting = new Setting(this.containerEl)
-			.setName("Show Estimate Column")
-			.setDesc("Show/hide the estimate column")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.showEstimate)
-					.onChange(async (value) => {
-						await this.updateSetting("showEstimate", value);
-					})
-			);
-
-		return showEstimateSetting;
-	}
-
-	private createShowStartTimeSetting(): Setting {
-		const showStartTimeSetting = new Setting(this.containerEl)
-			.setName("Show Start Time Column")
-			.setDesc("Show/hide the start time column")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.showStartTime)
-					.onChange(async (value) => {
-						await this.updateSetting("showStartTime", value);
-					})
-			);
-
-		return showStartTimeSetting;
-	}
-
-	private createShowEstimateInTaskNameSetting(): Setting {
-		const showEstimateInTaskNameSetting = new Setting(this.containerEl)
-			.setName("Show estimate in task name")
-			.setDesc(
-				"Include estimate time with the delimiter in the task name"
-			)
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.showEstimateInTaskName)
-					.onChange(async (value) => {
-						this.plugin.settings.showEstimateInTaskName = value;
-						await this.updateSetting(
-							"showEstimateInTaskName",
-							value
-						);
-					})
-			);
-
-		return showEstimateInTaskNameSetting;
-	}
-
-	private createShowStartTimeInTaskNameSetting(): Setting {
-		const showStartInTaskNameSetting = new Setting(this.containerEl)
-			.setName("Show start time in task name")
-			.setDesc("Include start time with the delimiter in the task name")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.showStartTimeInTaskName)
-					.onChange(async (value) => {
-						this.plugin.settings.showStartTimeInTaskName = value;
-						await this.updateSetting("showStartInTaskName", value);
-					})
-			);
-
-		return showStartInTaskNameSetting;
-	}
-
-	private createTaskEstimateDelimiterSetting(): Setting {
-		const taskEstimateDelimiterSetting = new Setting(this.containerEl)
-			.setName("Task/Estimate Delimiter")
-			.setDesc(
-				"Enter the delimiter to use between the task name and estimate"
-			)
-			.addText((text) => {
-				const el = text
-					.setPlaceholder(";")
-					.setValue(this.plugin.settings.taskEstimateDelimiter);
-				el.inputEl.addEventListener("change", async (ev) => {
-					if (!(ev.target instanceof HTMLInputElement)) {
-						return;
-					}
-					const value = ev.target.value.trim();
-					await this.updateSetting("taskEstimateDelimiter", value);
-				});
-				return el;
-			});
-
-		return taskEstimateDelimiterSetting;
-	}
-
-	private createStartTimeDelimiterSetting(): Setting {
-		const startTimeDelimiterSetting = new Setting(this.containerEl)
-			.setName("Start Time Delimiter")
-			.setDesc(
-				"Enter the delimiter to use between the task name and start time"
-			)
-			.addText((text) => {
-				const el = text
-					.setPlaceholder("@")
-					.setValue(this.plugin.settings.startTimeDelimiter);
-				el.inputEl.addEventListener("change", async (ev) => {
-					if (!(ev.target instanceof HTMLInputElement)) {
-						return;
-					}
-					const value = ev.target.value.trim();
-					await this.updateSetting("startTimeDelimiter", value);
-				});
-				return el;
-			});
-
-		return startTimeDelimiterSetting;
-	}
-
-	private createHeaderNameSetting(
-		headerName: string,
-		index: number
-	): Setting {
-		const headerNameSetting = new Setting(this.containerEl)
-			.setName(`Header Name ${index + 1}`)
-			.setDesc(`Enter the name of header ${index + 1}`)
-			.addText((text) =>
-				text.setValue(headerName).onChange(async (value) => {
-					const headerNames = [...this.plugin.settings.headerNames];
-					headerNames[index] = value;
-					await this.updateSetting("headerNames", headerNames);
+	createToggleSetting(name: string, key: string, desc?: string) {
+		const setting = new Setting(this.containerEl).setName(name);
+		if (desc) {
+			setting.setDesc(desc);
+		}
+		setting.addToggle((toggle) =>
+			toggle
+				.setValue(!!(this.plugin.settings[key] as boolean))
+				.onChange(async (value) => {
+					await this.plugin.updateSetting(key, value);
+					this.display();
 				})
-			);
-
-		return headerNameSetting;
+		);
 	}
 
-	private async onFilePathChange(ev: Event): Promise<void> {
-		if (!(ev.target instanceof HTMLInputElement)) {
-			return;
-		}
-		const value = ev.target.value.trim();
-		return this.updateSetting("filePath", value);
-	}
-
-	private async updateSetting<T extends keyof DynamicTimetableSettings>(
-		settingName: T,
-		newValue: DynamicTimetableSettings[T]
-	): Promise<void> {
-		this.plugin.settings[settingName] = newValue;
-		await this.plugin.saveData(this.plugin.settings);
-
-		for (let leaf of this.plugin.app.workspace.getLeavesOfType(
-			"Timetable"
-		)) {
-			let view = leaf.view;
-			if (view instanceof TimetableView) {
-				await view.update();
-			}
-		}
+	createHeaderNamesSetting(headerNames: string) {
+		new Setting(this.containerEl)
+			.setName("Header Names")
+			.setDesc("Enter header names, separated by commas.")
+			.addText((text) => {
+				const el = text.setValue(headerNames);
+				el.inputEl.style.width = "-webkit-fill-available";
+				el.inputEl.addEventListener("blur", async (event) => {
+					const value = (event.target as HTMLInputElement).value
+						.split(",")
+						.map((s) => s.trim());
+					await this.plugin.updateSetting("headerNames", value);
+					this.display();
+				});
+				return el;
+			});
 	}
 }
