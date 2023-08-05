@@ -9,7 +9,6 @@ import { createRoot } from "react-dom/client";
 import { WorkspaceLeaf, Notice, ItemView } from "obsidian";
 import DynamicTimetable from "./main";
 import { TaskParser } from "./TaskParser";
-import { ProgressBarManager } from "./ProgressBarManager";
 
 type Task = {
 	task: string;
@@ -30,6 +29,8 @@ const TimetableViewComponent = forwardRef<
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const taskParser = TaskParser.fromSettings(plugin.settings);
 	const containerRef = useRef<HTMLDivElement | null>(null);
+	const [progressDuration, setProgressDuration] = useState(0);
+	const [progressEstimate, setProgressEstimate] = useState(0);
 
 	const formatDateToTime = (date: Date) => {
 		const hours = date.getHours().toString().padStart(2, "0");
@@ -82,35 +83,24 @@ const TimetableViewComponent = forwardRef<
 	}, [plugin]);
 
 	useEffect(() => {
-		if (containerRef.current && tasks.length > 0) {
-			const progressBarManager = new ProgressBarManager(
-				plugin,
-				containerRef.current
-			);
+		const intervalId = setInterval(() => {
+			const topUncompletedTask = tasks.find((task) => !task.isCompleted);
+			if (
+				topUncompletedTask &&
+				topUncompletedTask.startTime &&
+				topUncompletedTask.estimate
+			) {
+				const duration =
+					new Date().getTime() -
+					topUncompletedTask.startTime.getTime();
+				const estimate =
+					parseInt(topUncompletedTask.estimate) * 60 * 1000;
+				setProgressDuration(duration);
+				setProgressEstimate(estimate);
+			}
+		}, plugin.settings.intervalTime * 1000);
 
-			const intervalId = setInterval(() => {
-				const topUncompletedTask = tasks.find(
-					(task) => !task.isCompleted
-				);
-				if (
-					topUncompletedTask &&
-					topUncompletedTask.startTime &&
-					topUncompletedTask.estimate
-				) {
-					const duration =
-						new Date().getTime() -
-						topUncompletedTask.startTime.getTime();
-					const estimate =
-						parseInt(topUncompletedTask.estimate) * 60 * 1000;
-					progressBarManager.createOrUpdateProgressBar(
-						duration,
-						estimate
-					);
-				}
-			}, plugin.settings.intervalTime * 1000);
-
-			return () => clearInterval(intervalId);
-		}
+		return () => clearInterval(intervalId);
 	}, [containerRef.current, tasks]);
 
 	return (
@@ -120,12 +110,11 @@ const TimetableViewComponent = forwardRef<
 			style={{ overflow: "auto", maxHeight: "100%" }}
 		>
 			{plugin.settings.showProgressBar && (
-				<div
-					className={
-						ProgressBarManager.PROGRESS_BAR_CLASS +
-						"-container dt-progress-bar-container"
-					}
-				></div>
+				<ProgressBar
+					duration={progressDuration}
+					estimate={progressEstimate}
+					enableOverdueNotice={plugin.settings.enableOverdueNotice}
+				/>
 			)}
 			<div className="dt-button-container">
 				<button
@@ -214,6 +203,26 @@ const TimetableViewComponent = forwardRef<
 		</div>
 	);
 });
+
+export const ProgressBar = ({ duration, estimate, enableOverdueNotice }) => {
+	const width = Math.min((duration / estimate) * 100, 100);
+	const isOverdue = width === 100;
+
+	if (isOverdue && enableOverdueNotice) {
+		new Notice("Are you finished?", 0);
+	}
+
+	return (
+		<div className="dt-progress-bar-container">
+			<div
+				className={`dt-progress-bar ${
+					isOverdue ? "dt-progress-bar-overdue" : ""
+				}`}
+				style={{ width: width + "%" }}
+			></div>
+		</div>
+	);
+};
 
 export class TimetableView extends ItemView {
 	private readonly plugin: DynamicTimetable;
