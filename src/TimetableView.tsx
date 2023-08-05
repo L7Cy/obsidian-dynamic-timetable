@@ -106,7 +106,7 @@ const TimetableViewComponent = forwardRef<
 					}
 				></div>
 			)}
-			<button onClick={update}>Update</button>
+			<button onClick={() => plugin.initTimetableView()}>Init</button>
 			<table>
 				<thead>
 					<tr>
