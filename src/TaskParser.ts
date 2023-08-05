@@ -32,6 +32,7 @@ export class TaskParser {
 					task.includes(this.startTimeDelimiter)
 			)
 			.map((task) => {
+				const isCompleted = task.startsWith("- [x]");
 				const taskName = this.parseTaskName(task);
 				let startTime = this.parseStartTime(task);
 				const estimate = this.parseEstimate(task);
@@ -52,6 +53,7 @@ export class TaskParser {
 					startTime: startTime,
 					estimate: estimate,
 					endTime: endTime,
+					isCompleted: isCompleted,
 				};
 			});
 

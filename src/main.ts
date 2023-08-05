@@ -7,6 +7,7 @@ export interface Task {
 	startTime: Date | null;
 	estimate: string | null;
 	endTime: Date | null;
+	isCompleted: boolean;
 }
 
 export interface DynamicTimetableSettings {

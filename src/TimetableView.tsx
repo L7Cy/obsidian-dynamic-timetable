@@ -16,6 +16,7 @@ type Task = {
 	startTime: Date | null;
 	estimate: string | null;
 	endTime: Date | null;
+	isCompleted: boolean;
 };
 
 export interface TimetableViewComponentRef {
@@ -57,24 +58,36 @@ const TimetableViewComponent = forwardRef<
 	}, [plugin]);
 
 	useEffect(() => {
-		if (containerRef.current) {
+		if (containerRef.current && tasks.length > 0) {
 			const progressBarManager = new ProgressBarManager(
 				plugin,
 				containerRef.current
 			);
-			tasks.forEach((task) => {
-				if (task.startTime && task.estimate) {
+
+			const intervalId = setInterval(() => {
+				const topUncompletedTask = tasks.find(
+					(task) => !task.isCompleted
+				);
+				if (
+					topUncompletedTask &&
+					topUncompletedTask.startTime &&
+					topUncompletedTask.estimate
+				) {
 					const duration =
-						new Date().getTime() - task.startTime.getTime();
-					const estimate = parseInt(task.estimate) * 60 * 1000;
+						new Date().getTime() -
+						topUncompletedTask.startTime.getTime();
+					const estimate =
+						parseInt(topUncompletedTask.estimate) * 60 * 1000;
 					progressBarManager.createOrUpdateProgressBar(
 						duration,
 						estimate
 					);
 				}
-			});
+			}, /*plugin.settings.intervalTime*/ 1 * 1000);
+
+			return () => clearInterval(intervalId);
 		}
-	}, [plugin, tasks]);
+	}, [containerRef.current, tasks]);
 
 	return (
 		<div
