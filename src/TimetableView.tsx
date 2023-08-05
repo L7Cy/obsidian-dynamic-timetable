@@ -5,7 +5,7 @@ import React, {
 	forwardRef,
 	useImperativeHandle,
 } from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from 'react-dom/client';
 import { WorkspaceLeaf, Notice, ItemView } from "obsidian";
 import DynamicTimetable from "./main";
 import { TaskParser } from "./TaskParser";
@@ -109,8 +109,8 @@ const TimetableViewComponent = forwardRef<
 					</tr>
 				</thead>
 				<tbody>
-					{tasks.map((task) => (
-						<tr>
+					{tasks.map((task, index) => (
+						<tr key={index}>
 							<td>{task.task}</td>
 							<td>{task.estimate}</td>
 							<td>
@@ -140,6 +140,7 @@ const formatDateToTime = (date: Date) => {
 export class TimetableView extends ItemView {
 	private readonly plugin: DynamicTimetable;
 	private componentRef: React.RefObject<TimetableViewComponentRef>;
+	private root: any;
 
 	constructor(leaf: WorkspaceLeaf, plugin: DynamicTimetable) {
 		super(leaf);
@@ -156,17 +157,19 @@ export class TimetableView extends ItemView {
 	}
 
 	async onOpen(): Promise<void> {
-		ReactDOM.render(
+		this.root = createRoot(this.containerEl);
+		this.root.render(
 			<TimetableViewComponent
 				plugin={this.plugin}
 				ref={this.componentRef}
-			/>,
-			this.containerEl
+			/>
 		);
 	}
 
 	async onClose(): Promise<void> {
-		ReactDOM.unmountComponentAtNode(this.containerEl);
+		if (this.root) {
+			this.root.unmount();
+		}
 	}
 
 	async update() {
