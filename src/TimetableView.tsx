@@ -5,7 +5,7 @@ import React, {
 	forwardRef,
 	useImperativeHandle,
 } from "react";
-import { createRoot } from 'react-dom/client';
+import { createRoot } from "react-dom/client";
 import { WorkspaceLeaf, Notice, ItemView } from "obsidian";
 import DynamicTimetable from "./main";
 import { TaskParser } from "./TaskParser";
@@ -37,6 +37,10 @@ const TimetableViewComponent = forwardRef<
 		const parsedTasks = taskParser.filterAndParseTasks(content);
 		setTasks(parsedTasks);
 	};
+
+	const filteredTasks = plugin.settings.showCompletedTasks
+		? tasks
+		: tasks.filter((task) => !task.isCompleted);
 
 	useImperativeHandle(ref, () => ({
 		update,
@@ -83,7 +87,7 @@ const TimetableViewComponent = forwardRef<
 						estimate
 					);
 				}
-			}, /*plugin.settings.intervalTime*/ 1 * 1000);
+			}, plugin.settings.intervalTime * 1000);
 
 			return () => clearInterval(intervalId);
 		}
@@ -95,29 +99,37 @@ const TimetableViewComponent = forwardRef<
 			className="Timetable"
 			style={{ overflow: "auto", maxHeight: "100%" }}
 		>
-			<div
-				className={ProgressBarManager.PROGRESS_BAR_CLASS + "-container"}
-			></div>
+			{plugin.settings.showProgressBar && (
+				<div
+					className={
+						ProgressBarManager.PROGRESS_BAR_CLASS + "-container"
+					}
+				></div>
+			)}
 			<button onClick={update}>Update</button>
 			<table>
 				<thead>
 					<tr>
 						<th>Task</th>
-						<th>Estimate</th>
-						<th>Start</th>
+						{plugin.settings.showEstimate && <th>Estimate</th>}
+						{plugin.settings.showStartTime && <th>Start</th>}
 						<th>End</th>
 					</tr>
 				</thead>
 				<tbody>
-					{tasks.map((task, index) => (
+					{filteredTasks.map((task, index) => (
 						<tr key={index}>
 							<td>{task.task}</td>
-							<td>{task.estimate}</td>
-							<td>
-								{task.startTime
-									? formatDateToTime(task.startTime)
-									: ""}
-							</td>
+							{plugin.settings.showEstimate && (
+								<td>{task.estimate}</td>
+							)}
+							{plugin.settings.showStartTime && (
+								<td>
+									{task.startTime
+										? formatDateToTime(task.startTime)
+										: ""}
+								</td>
+							)}
 							<td>
 								{task.endTime
 									? formatDateToTime(task.endTime)
