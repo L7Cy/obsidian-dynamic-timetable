@@ -54,7 +54,10 @@ const TimetableViewComponent = forwardRef<
 	}, [plugin]);
 
 	return (
-		<div className="Timetable">
+		<div
+			className="Timetable"
+			style={{ overflow: "auto", maxHeight: "100%" }}
+		>
 			<button onClick={update}>Update</button>
 			<table>
 				<thead>
