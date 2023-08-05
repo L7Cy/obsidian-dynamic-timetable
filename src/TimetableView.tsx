@@ -1,5 +1,6 @@
 import React, {
 	useEffect,
+	useRef,
 	useState,
 	forwardRef,
 	useImperativeHandle,
@@ -8,6 +9,7 @@ import ReactDOM from "react-dom";
 import { WorkspaceLeaf, Notice, ItemView } from "obsidian";
 import DynamicTimetable from "./main";
 import { TaskParser } from "./TaskParser";
+import { ProgressBarManager } from "./ProgressBarManager";
 
 type Task = {
 	task: string;
@@ -26,6 +28,7 @@ const TimetableViewComponent = forwardRef<
 >(({ plugin }, ref) => {
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const taskParser = TaskParser.fromSettings(plugin.settings);
+	const containerRef = useRef<HTMLDivElement | null>(null);
 
 	const update = async () => {
 		if (!plugin.targetFile) return;
@@ -53,11 +56,35 @@ const TimetableViewComponent = forwardRef<
 		return () => plugin.app.vault.off("modify", onFileModify);
 	}, [plugin]);
 
+	useEffect(() => {
+		if (containerRef.current) {
+			const progressBarManager = new ProgressBarManager(
+				plugin,
+				containerRef.current
+			);
+			tasks.forEach((task) => {
+				if (task.startTime && task.estimate) {
+					const duration =
+						new Date().getTime() - task.startTime.getTime();
+					const estimate = parseInt(task.estimate) * 60 * 1000;
+					progressBarManager.createOrUpdateProgressBar(
+						duration,
+						estimate
+					);
+				}
+			});
+		}
+	}, [plugin, tasks]);
+
 	return (
 		<div
+			ref={containerRef}
 			className="Timetable"
 			style={{ overflow: "auto", maxHeight: "100%" }}
 		>
+			<div
+				className={ProgressBarManager.PROGRESS_BAR_CLASS + "-container"}
+			></div>
 			<button onClick={update}>Update</button>
 			<table>
 				<thead>
