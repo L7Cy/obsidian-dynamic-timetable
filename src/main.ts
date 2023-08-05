@@ -16,10 +16,16 @@ export interface DynamicTimetableSettings {
 	showStartTime: boolean;
 	showEstimateInTaskName: boolean;
 	showStartTimeInTaskName: boolean;
+	showBufferTime: boolean;
+	showProgressBar: boolean;
+	intervalTime: number;
 	taskEstimateDelimiter: string;
 	startTimeDelimiter: string;
 	headerNames: string[];
-	[key: string]: string | boolean | string[] | null | undefined;
+	dateDelimiter: string;
+	enableOverdueNotice: boolean;
+	showCompletedTasks: boolean;
+	[key: string]: string | boolean | string[] | number | null | undefined;
 }
 
 declare module "obsidian" {
@@ -37,10 +43,16 @@ export default class DynamicTimetable extends Plugin {
 		showEstimate: false,
 		showStartTime: false,
 		showEstimateInTaskName: false,
-		showStartTimeInTaskName: false,
+		showStartTimeInTaskName: true,
+		showBufferTime: true,
+		showProgressBar: true,
+		intervalTime: 1,
 		taskEstimateDelimiter: ";",
 		startTimeDelimiter: "@",
+		dateDelimiter: "",
+		enableOverdueNotice: true,
 		headerNames: ["Tasks", "Estimate", "Start", "End"],
+		showCompletedTasks: true,
 	};
 
 	onunload(): void {
