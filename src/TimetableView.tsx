@@ -27,10 +27,10 @@ const TimetableViewComponent = forwardRef<
 	{ plugin: DynamicTimetable }
 >(({ plugin }, ref) => {
 	const [tasks, setTasks] = useState<Task[]>([]);
-	const taskParser = TaskParser.fromSettings(plugin.settings);
-	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [progressDuration, setProgressDuration] = useState(0);
 	const [progressEstimate, setProgressEstimate] = useState(0);
+	const taskParser = TaskParser.fromSettings(plugin.settings);
+	const containerRef = useRef<HTMLDivElement | null>(null);
 
 	const formatDateToTime = (date: Date) => {
 		const hours = date.getHours().toString().padStart(2, "0");
@@ -43,11 +43,10 @@ const TimetableViewComponent = forwardRef<
 		taskStartTime: Date | null
 	): number | null => {
 		if (currentTaskEndTime && taskStartTime) {
-			const bufferMinutes = Math.ceil(
+			return Math.ceil(
 				(taskStartTime.getTime() - currentTaskEndTime.getTime()) /
 					(60 * 1000)
 			);
-			return bufferMinutes;
 		}
 		return null;
 	};
@@ -63,9 +62,7 @@ const TimetableViewComponent = forwardRef<
 		? tasks
 		: tasks.filter((task) => !task.isCompleted);
 
-	useImperativeHandle(ref, () => ({
-		update,
-	}));
+	useImperativeHandle(ref, () => ({ update }));
 
 	useEffect(() => {
 		const onFileModify = async (file: any) => {
@@ -76,9 +73,7 @@ const TimetableViewComponent = forwardRef<
 		};
 		const unregisterEvent = plugin.app.vault.on("modify", onFileModify);
 		plugin.registerEvent(unregisterEvent);
-
 		update();
-
 		return () => plugin.app.vault.off("modify", onFileModify);
 	}, [plugin]);
 
