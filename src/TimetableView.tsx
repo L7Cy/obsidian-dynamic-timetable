@@ -18,6 +18,12 @@ type Task = {
 	isCompleted: boolean;
 };
 
+type ProgressBarProps = {
+	duration: number;
+	estimate: number;
+	enableOverdueNotice: boolean;
+};
+
 export interface TimetableViewComponentRef {
 	update: () => Promise<void>;
 }
@@ -199,7 +205,11 @@ const TimetableViewComponent = forwardRef<
 	);
 });
 
-export const ProgressBar = ({ duration, estimate, enableOverdueNotice }) => {
+export const ProgressBar = ({
+	duration,
+	estimate,
+	enableOverdueNotice,
+}: ProgressBarProps) => {
 	const width = Math.min((duration / estimate) * 100, 100);
 	const isOverdue = width === 100;
 
