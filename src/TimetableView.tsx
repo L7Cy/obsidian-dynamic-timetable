@@ -138,10 +138,14 @@ const TimetableViewComponent = forwardRef<
 			<table className="dt-table">
 				<thead>
 					<tr>
-						<th>Task</th>
-						{plugin.settings.showEstimate && <th>Estimate</th>}
-						{plugin.settings.showStartTime && <th>Start</th>}
-						<th>End</th>
+						<th>{plugin.settings.headerNames[0]}</th>
+						{plugin.settings.showEstimate && (
+							<th>{plugin.settings.headerNames[1]}</th>
+						)}
+						{plugin.settings.showStartTime && (
+							<th>{plugin.settings.headerNames[2]}</th>
+						)}
+						<th>{plugin.settings.headerNames[3]}</th>
 					</tr>
 				</thead>
 				<tbody>
