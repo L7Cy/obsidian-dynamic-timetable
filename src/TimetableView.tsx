@@ -31,6 +31,12 @@ const TimetableViewComponent = forwardRef<
 	const taskParser = TaskParser.fromSettings(plugin.settings);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 
+	const formatDateToTime = (date: Date) => {
+		const hours = date.getHours().toString().padStart(2, "0");
+		const minutes = date.getMinutes().toString().padStart(2, "0");
+		return `${hours}:${minutes}`;
+	};
+
 	const update = async () => {
 		if (!plugin.targetFile) return;
 		const content = await plugin.app.vault.cachedRead(plugin.targetFile);
@@ -142,12 +148,6 @@ const TimetableViewComponent = forwardRef<
 		</div>
 	);
 });
-
-const formatDateToTime = (date: Date) => {
-	const hours = date.getHours().toString().padStart(2, "0");
-	const minutes = date.getMinutes().toString().padStart(2, "0");
-	return `${hours}:${minutes}`;
-};
 
 export class TimetableView extends ItemView {
 	private readonly plugin: DynamicTimetable;
