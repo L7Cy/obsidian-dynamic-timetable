@@ -25,8 +25,12 @@ export class TaskParser {
 		);
 	}
 
-	public filterAndParseTasks(content: string): Task[] {
+	public filterAndParseTasks(
+		content: string,
+		yamlStartTime: Date | null
+	): Task[] {
 		let previousEndTime: Date | null = null;
+		let firstUncompletedTaskFound = false;
 
 		const tasks = content
 			.split("\n")
@@ -45,7 +49,14 @@ export class TaskParser {
 				let startTime = this.parseStartTime(task);
 				const estimate = this.parseEstimate(task);
 
-				if (!startTime && previousEndTime) {
+				if (
+					!isCompleted &&
+					!firstUncompletedTaskFound &&
+					yamlStartTime
+				) {
+					startTime = yamlStartTime;
+					firstUncompletedTaskFound = true;
+				} else if (!startTime && previousEndTime) {
 					startTime = previousEndTime;
 				}
 
