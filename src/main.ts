@@ -2,14 +2,6 @@ import { Plugin, WorkspaceLeaf, TFile, Notice } from "obsidian";
 import { TimetableView } from "./TimetableView";
 import { DynamicTimetableSettingTab } from "./Settings";
 
-export interface Task {
-	task: string;
-	startTime: Date | null;
-	estimate: string | null;
-	endTime: Date | null;
-	isCompleted: boolean;
-}
-
 export interface DynamicTimetableSettings {
 	filePath: string | null;
 	showEstimate: boolean;

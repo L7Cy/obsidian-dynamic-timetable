@@ -1,4 +1,12 @@
-import { DynamicTimetableSettings, Task } from "./main";
+import { DynamicTimetableSettings } from "./main";
+
+export interface Task {
+	task: string;
+	startTime: Date | null;
+	estimate: string | null;
+	endTime: Date | null;
+	isCompleted: boolean;
+}
 
 export class TaskParser {
 	constructor(

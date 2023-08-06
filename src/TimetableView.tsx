@@ -8,7 +8,7 @@ import React, {
 import { createRoot } from "react-dom/client";
 import { WorkspaceLeaf, Notice, ItemView, setIcon } from "obsidian";
 import DynamicTimetable from "./main";
-import { TaskParser } from "./TaskParser";
+import { taskFunctions } from "./TaskManager";
 
 type Task = {
 	task: string;
@@ -51,11 +51,11 @@ const TimetableViewComponent = forwardRef<
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [progressDuration, setProgressDuration] = useState(0);
 	const [progressEstimate, setProgressEstimate] = useState(0);
-	const taskParser = TaskParser.fromSettings(plugin.settings);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const completeButtonRef = useRef(null);
 	const interruptButtonRef = useRef(null);
 	const initButtonRef = useRef(null);
+	const taskManager = taskFunctions(plugin);
 
 	const formatDateToTime = (date: Date) => {
 		const hours = date.getHours().toString().padStart(2, "0");
@@ -78,9 +78,8 @@ const TimetableViewComponent = forwardRef<
 
 	const update = async () => {
 		if (!plugin.targetFile) return;
-		const content = await plugin.app.vault.cachedRead(plugin.targetFile);
-		const parsedTasks = taskParser.filterAndParseTasks(content);
-		setTasks(parsedTasks);
+		const newTasks = await taskManager.initializeTasks();
+		setTasks(newTasks);
 	};
 
 	const filteredTasks = plugin.settings.showCompletedTasks
@@ -138,12 +137,26 @@ const TimetableViewComponent = forwardRef<
 			<div className="dt-button-container">
 				<ButtonWithIcon
 					buttonRef={completeButtonRef}
-					onClick={() => plugin.initTimetableView()}
+					onClick={() => {
+						const firstUncompletedTask = tasks.find(
+							(task) => !task.isCompleted
+						);
+						if (firstUncompletedTask) {
+							taskManager.completeTask(firstUncompletedTask);
+						}
+					}}
 					icon="check-circle"
 				/>
 				<ButtonWithIcon
 					buttonRef={interruptButtonRef}
-					onClick={() => plugin.initTimetableView()}
+					onClick={() => {
+						const firstUncompletedTask = tasks.find(
+							(task) => !task.isCompleted
+						);
+						if (firstUncompletedTask) {
+							taskManager.interruptTask(firstUncompletedTask);
+						}
+					}}
 					icon="circle-slash"
 				/>
 				<ButtonWithIcon
