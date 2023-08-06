@@ -6,7 +6,7 @@ import React, {
 	useImperativeHandle,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { WorkspaceLeaf, Notice, ItemView } from "obsidian";
+import { WorkspaceLeaf, Notice, ItemView, setIcon } from "obsidian";
 import DynamicTimetable from "./main";
 import { TaskParser } from "./TaskParser";
 
@@ -37,6 +37,9 @@ const TimetableViewComponent = forwardRef<
 	const [progressEstimate, setProgressEstimate] = useState(0);
 	const taskParser = TaskParser.fromSettings(plugin.settings);
 	const containerRef = useRef<HTMLDivElement | null>(null);
+	const completeButtonRef = useRef(null);
+	const interruptButtonRef = useRef(null);
+	const initButtonRef = useRef(null);
 
 	const formatDateToTime = (date: Date) => {
 		const hours = date.getHours().toString().padStart(2, "0");
@@ -104,6 +107,18 @@ const TimetableViewComponent = forwardRef<
 		return () => clearInterval(intervalId);
 	}, [containerRef.current, tasks]);
 
+	useEffect(() => {
+		if (completeButtonRef.current) {
+			setIcon(completeButtonRef.current, "check-circle");
+		}
+		if (interruptButtonRef.current) {
+			setIcon(interruptButtonRef.current, "circle-slash");
+		}
+		if (initButtonRef.current) {
+			setIcon(initButtonRef.current, "refresh-ccw");
+		}
+	}, []);
+
 	return (
 		<div
 			ref={containerRef}
@@ -119,10 +134,22 @@ const TimetableViewComponent = forwardRef<
 			)}
 			<div className="dt-button-container">
 				<button
+					ref={completeButtonRef}
 					className="dt-button"
 					onClick={() => plugin.initTimetableView()}
 				>
-					Init
+				</button>
+				<button
+					ref={interruptButtonRef}
+					className="dt-button"
+					onClick={() => plugin.initTimetableView()}
+				>
+				</button>
+				<button
+					ref={initButtonRef}
+					className="dt-button"
+					onClick={() => plugin.initTimetableView()}
+				>
 				</button>
 			</div>
 			<table className="dt-table">
