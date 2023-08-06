@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { setIcon } from "obsidian";
+import { CommandsManager } from "./Commands";
+import DynamicTimetable from "./main";
 
 type ButtonProps = {
 	onClick: () => void;
@@ -18,15 +20,13 @@ const ButtonWithIcon = ({ onClick, buttonRef, icon }: ButtonProps) => {
 };
 
 type ButtonContainerProps = {
-	completeTask: () => void;
-	interruptTask: () => void;
-	initTimetableView: () => void;
+	plugin: DynamicTimetable;
+	commandsManager: CommandsManager;
 };
 
 export const ButtonContainer = ({
-	completeTask,
-	interruptTask,
-	initTimetableView,
+	plugin,
+	commandsManager,
 }: ButtonContainerProps) => {
 	const completeButtonRef = useRef(null);
 	const interruptButtonRef = useRef(null);
@@ -36,17 +36,17 @@ export const ButtonContainer = ({
 		<div className="dt-button-container">
 			<ButtonWithIcon
 				buttonRef={completeButtonRef}
-				onClick={completeTask}
+				onClick={() => commandsManager.completeTask()}
 				icon="check-circle"
 			/>
 			<ButtonWithIcon
 				buttonRef={interruptButtonRef}
-				onClick={interruptTask}
+				onClick={() => commandsManager.interruptTask()}
 				icon="circle-slash"
 			/>
 			<ButtonWithIcon
 				buttonRef={initButtonRef}
-				onClick={initTimetableView}
+				onClick={() => plugin.initTimetableView()}
 				icon="refresh-ccw"
 			/>
 		</div>

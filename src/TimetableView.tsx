@@ -5,16 +5,19 @@ import DynamicTimetable from "./main";
 import TimetableViewComponent, {
 	TimetableViewComponentRef,
 } from "./TimetableViewComponent";
+import { CommandsManager } from "./Commands";
 
 export class TimetableView extends ItemView {
 	private readonly plugin: DynamicTimetable;
 	private componentRef: React.RefObject<TimetableViewComponentRef>;
 	private root: any;
+	private commandsManager: CommandsManager;
 
 	constructor(leaf: WorkspaceLeaf, plugin: DynamicTimetable) {
 		super(leaf);
 		this.plugin = plugin;
 		this.componentRef = React.createRef<TimetableViewComponentRef>();
+		this.commandsManager = new CommandsManager(plugin);
 	}
 
 	getViewType(): string {
@@ -30,6 +33,7 @@ export class TimetableView extends ItemView {
 		this.root.render(
 			<TimetableViewComponent
 				plugin={this.plugin}
+				commandsManager={this.commandsManager}
 				ref={this.componentRef}
 			/>
 		);

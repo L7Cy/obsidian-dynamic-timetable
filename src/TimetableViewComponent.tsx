@@ -9,6 +9,7 @@ import DynamicTimetable from "./main";
 import { taskFunctions } from "./TaskManager";
 import { ButtonContainer } from "./Button";
 import ProgressBar from "./ProgressBar";
+import { CommandsManager } from "./Commands";
 
 type Task = {
 	task: string;
@@ -24,8 +25,11 @@ export type TimetableViewComponentRef = {
 
 const TimetableViewComponent = forwardRef<
 	TimetableViewComponentRef,
-	{ plugin: DynamicTimetable }
->(({ plugin }, ref) => {
+	{
+		plugin: DynamicTimetable;
+		commandsManager: CommandsManager;
+	}
+>(({ plugin, commandsManager }, ref) => {
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [progressDuration, setProgressDuration] = useState(0);
 	const [progressEstimate, setProgressEstimate] = useState(0);
@@ -122,23 +126,8 @@ const TimetableViewComponent = forwardRef<
 				/>
 			)}
 			<ButtonContainer
-				completeTask={() => {
-					const firstUncompletedTask = tasks.find(
-						(task) => !task.isCompleted
-					);
-					if (firstUncompletedTask) {
-						taskManager.completeTask(firstUncompletedTask);
-					}
-				}}
-				interruptTask={() => {
-					const firstUncompletedTask = tasks.find(
-						(task) => !task.isCompleted
-					);
-					if (firstUncompletedTask) {
-						taskManager.interruptTask(firstUncompletedTask);
-					}
-				}}
-				initTimetableView={() => plugin.initTimetableView()}
+				plugin={plugin}
+				commandsManager={commandsManager}
 			/>
 			<table className="dt-table">
 				<thead>

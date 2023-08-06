@@ -3,6 +3,7 @@ import { TimetableView } from "./TimetableView";
 import { DynamicTimetableSettingTab } from "./Settings";
 import { taskFunctions } from "./TaskManager";
 import { Task } from "./TaskParser";
+import { CommandsManager } from "./Commands";
 
 export interface DynamicTimetableSettings {
 	filePath: string | null;
@@ -32,6 +33,8 @@ export default class DynamicTimetable extends Plugin {
 	settings: DynamicTimetableSettings;
 	targetFile: TFile | null = null;
 	tasks: Task[] = [];
+
+	private commandsManager: CommandsManager;
 
 	static DEFAULT_SETTINGS: DynamicTimetableSettings = {
 		filePath: null,
@@ -63,10 +66,8 @@ export default class DynamicTimetable extends Plugin {
 		};
 		this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
 
-		this.addToggleTimetableCommand();
-		this.addInitTimetableViewCommand();
-		this.addCompleteTaskCommand();
-		this.addInterruptTaskCommand();
+		this.commandsManager = new CommandsManager(this);
+		this.initCommands();
 		this.registerView(
 			"Timetable",
 			(leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
@@ -82,6 +83,32 @@ export default class DynamicTimetable extends Plugin {
 				)
 			);
 		}
+	}
+
+	initCommands(): void {
+		this.addCommand({
+			id: "toggle-timetable",
+			name: "Show/Hide Timetable",
+			callback: () => this.commandsManager.toggleTimetable(),
+		});
+
+		this.addCommand({
+			id: "init-timetable-view",
+			name: "Initialize Timetable View",
+			callback: () => this.commandsManager.initializeTimetableView(),
+		});
+
+		this.addCommand({
+			id: "complete-task",
+			name: "Complete Current Task",
+			callback: () => this.commandsManager.completeTask(),
+		});
+
+		this.addCommand({
+			id: "interrupt-task",
+			name: "Interrupt Current Task",
+			callback: () => this.commandsManager.interruptTask(),
+		});
 	}
 
 	async updateSetting<T extends keyof DynamicTimetableSettings>(
@@ -102,63 +129,6 @@ export default class DynamicTimetable extends Plugin {
 		} else {
 			this.updateOpenTimetableViews();
 		}
-	}
-
-	private addToggleTimetableCommand(): void {
-		this.addCommand({
-			id: "toggle-timetable",
-			name: "Show/Hide Timetable",
-			callback: () => {
-				const leaves = this.app.workspace.getLeavesOfType("Timetable");
-				if (leaves.length == 0) {
-					this.openTimetable();
-				} else {
-					this.closeTimetable();
-				}
-			},
-		});
-	}
-
-	private addInitTimetableViewCommand(): void {
-		this.addCommand({
-			id: "init-timetable-view",
-			name: "Initialize Timetable View",
-			callback: () => {
-				this.initTimetableView();
-			},
-		});
-	}
-
-	private addCompleteTaskCommand(): void {
-		this.addCommand({
-			id: "complete-task",
-			name: "Complete Task",
-			callback: () => {
-				const taskManager = taskFunctions(this);
-				const firstUncompletedTask = this.tasks.find(
-					(task) => !task.isCompleted
-				);
-				if (firstUncompletedTask) {
-					taskManager.completeTask(firstUncompletedTask);
-				}
-			},
-		});
-	}
-
-	private addInterruptTaskCommand(): void {
-		this.addCommand({
-			id: "interrupt-task",
-			name: "Interrupt Task",
-			callback: () => {
-				const taskManager = taskFunctions(this);
-				const firstUncompletedTask = this.tasks.find(
-					(task) => !task.isCompleted
-				);
-				if (firstUncompletedTask) {
-					taskManager.interruptTask(firstUncompletedTask);
-				}
-			},
-		});
 	}
 
 	async updateOpenTimetableViews() {
