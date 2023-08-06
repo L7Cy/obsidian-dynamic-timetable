@@ -61,8 +61,12 @@ export class TaskParser {
 					dateDelimiterFound = false;
 				}
 
-				let startTime = this.parseStartTime(task, nextDay);
 				const estimate = this.parseEstimate(task);
+				if (!estimate) {
+					return acc;
+				}
+
+				let startTime = this.parseStartTime(task, nextDay);
 
 				if (
 					!isCompleted &&
