@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import DynamicTimetable from "./main";
 import { taskFunctions } from "./TaskManager";
-import ButtonWithIcon from "./ButtonWithIcon";
+import { ButtonContainer } from "./Button";
 import ProgressBar from "./ProgressBar";
 
 type Task = {
@@ -30,9 +30,6 @@ const TimetableViewComponent = forwardRef<
 	const [progressDuration, setProgressDuration] = useState(0);
 	const [progressEstimate, setProgressEstimate] = useState(0);
 	const containerRef = useRef<HTMLDivElement | null>(null);
-	const completeButtonRef = useRef(null);
-	const interruptButtonRef = useRef(null);
-	const initButtonRef = useRef(null);
 	const taskManager = taskFunctions(plugin);
 
 	const formatDateToTime = (date: Date) => {
@@ -124,37 +121,25 @@ const TimetableViewComponent = forwardRef<
 					enableOverdueNotice={plugin.settings.enableOverdueNotice}
 				/>
 			)}
-			<div className="dt-button-container">
-				<ButtonWithIcon
-					buttonRef={completeButtonRef}
-					onClick={() => {
-						const firstUncompletedTask = tasks.find(
-							(task) => !task.isCompleted
-						);
-						if (firstUncompletedTask) {
-							taskManager.completeTask(firstUncompletedTask);
-						}
-					}}
-					icon="check-circle"
-				/>
-				<ButtonWithIcon
-					buttonRef={interruptButtonRef}
-					onClick={() => {
-						const firstUncompletedTask = tasks.find(
-							(task) => !task.isCompleted
-						);
-						if (firstUncompletedTask) {
-							taskManager.interruptTask(firstUncompletedTask);
-						}
-					}}
-					icon="circle-slash"
-				/>
-				<ButtonWithIcon
-					buttonRef={initButtonRef}
-					onClick={() => plugin.initTimetableView()}
-					icon="refresh-ccw"
-				/>
-			</div>
+			<ButtonContainer
+				completeTask={() => {
+					const firstUncompletedTask = tasks.find(
+						(task) => !task.isCompleted
+					);
+					if (firstUncompletedTask) {
+						taskManager.completeTask(firstUncompletedTask);
+					}
+				}}
+				interruptTask={() => {
+					const firstUncompletedTask = tasks.find(
+						(task) => !task.isCompleted
+					);
+					if (firstUncompletedTask) {
+						taskManager.interruptTask(firstUncompletedTask);
+					}
+				}}
+				initTimetableView={() => plugin.initTimetableView()}
+			/>
 			<table className="dt-table">
 				<thead>
 					<tr>
