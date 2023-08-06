@@ -24,9 +24,25 @@ type ProgressBarProps = {
 	enableOverdueNotice: boolean;
 };
 
+type ButtonProps = {
+	onClick: () => void;
+	buttonRef: React.RefObject<HTMLButtonElement>;
+	icon: string;
+};
+
 export interface TimetableViewComponentRef {
 	update: () => Promise<void>;
 }
+
+const ButtonWithIcon = ({ onClick, buttonRef, icon }: ButtonProps) => {
+	useEffect(() => {
+		if (buttonRef.current) {
+			setIcon(buttonRef.current, icon);
+		}
+	}, []);
+
+	return <button ref={buttonRef} className="dt-button" onClick={onClick} />;
+};
 
 const TimetableViewComponent = forwardRef<
 	TimetableViewComponentRef,
@@ -107,18 +123,6 @@ const TimetableViewComponent = forwardRef<
 		return () => clearInterval(intervalId);
 	}, [containerRef.current, tasks]);
 
-	useEffect(() => {
-		if (completeButtonRef.current) {
-			setIcon(completeButtonRef.current, "check-circle");
-		}
-		if (interruptButtonRef.current) {
-			setIcon(interruptButtonRef.current, "circle-slash");
-		}
-		if (initButtonRef.current) {
-			setIcon(initButtonRef.current, "refresh-ccw");
-		}
-	}, []);
-
 	return (
 		<div
 			ref={containerRef}
@@ -133,24 +137,21 @@ const TimetableViewComponent = forwardRef<
 				/>
 			)}
 			<div className="dt-button-container">
-				<button
-					ref={completeButtonRef}
-					className="dt-button"
+				<ButtonWithIcon
+					buttonRef={completeButtonRef}
 					onClick={() => plugin.initTimetableView()}
-				>
-				</button>
-				<button
-					ref={interruptButtonRef}
-					className="dt-button"
+					icon="check-circle"
+				/>
+				<ButtonWithIcon
+					buttonRef={interruptButtonRef}
 					onClick={() => plugin.initTimetableView()}
-				>
-				</button>
-				<button
-					ref={initButtonRef}
-					className="dt-button"
+					icon="circle-slash"
+				/>
+				<ButtonWithIcon
+					buttonRef={initButtonRef}
 					onClick={() => plugin.initTimetableView()}
-				>
-				</button>
+					icon="refresh-ccw"
+				/>
 			</div>
 			<table className="dt-table">
 				<thead>
