@@ -93,7 +93,6 @@ const TimetableViewComponent = forwardRef<
 		const onFileModify = async (file: any) => {
 			if (file === plugin.targetFile) {
 				await update();
-				new Notice("Timetable updated!");
 			}
 		};
 		const unregisterEvent = plugin.app.vault.on("modify", onFileModify);
