@@ -1,7 +1,7 @@
 import { TaskParser, Task as ImportedTask } from "./TaskParser";
 import DynamicTimetable from "./main";
 
-type Task = ImportedTask & {
+export type Task = ImportedTask & {
 	previousTaskEndTime?: Date | null;
 };
 

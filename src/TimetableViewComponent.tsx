@@ -6,22 +6,61 @@ import React, {
 	useImperativeHandle,
 } from "react";
 import DynamicTimetable from "./main";
-import { taskFunctions } from "./TaskManager";
+import { Task, taskFunctions } from "./TaskManager";
 import { ButtonContainer } from "./Button";
 import ProgressBar from "./ProgressBar";
 import { CommandsManager } from "./Commands";
 
-type Task = {
-	task: string;
-	startTime: Date | null;
-	estimate: string | null;
-	endTime: Date | null;
-	isCompleted: boolean;
+type TaskRowProps = {
+	task: Task;
+	plugin: DynamicTimetable;
+	bufferTime: number | null;
+};
+
+type BufferTimeRowProps = {
+	bufferTime: number | null;
 };
 
 export type TimetableViewComponentRef = {
 	update: () => Promise<void>;
 };
+
+const TaskRow: React.FC<TaskRowProps> = ({ task, plugin, bufferTime }) => {
+	const formatDateToTime = (date: Date) => {
+		const hours = date.getHours().toString().padStart(2, "0");
+		const minutes = date.getMinutes().toString().padStart(2, "0");
+		return `${hours}:${minutes}`;
+	};
+
+	let bufferClass = "";
+	if (bufferTime && bufferTime !== null && !task.isCompleted) {
+		bufferClass = bufferTime < 0 ? "late" : "on-time";
+	}
+
+	return (
+		<tr
+			className={`${bufferClass} ${
+				task.isCompleted ? "dt-completed" : ""
+			}`}
+		>
+			<td>{task.task}</td>
+			{plugin.settings.showEstimate && <td>{task.estimate}</td>}
+			{plugin.settings.showStartTime && (
+				<td>
+					{task.startTime ? formatDateToTime(task.startTime) : ""}
+				</td>
+			)}
+			<td>{task.endTime ? formatDateToTime(task.endTime) : ""}</td>
+		</tr>
+	);
+};
+
+const BufferTimeRow: React.FC<BufferTimeRowProps> = ({ bufferTime }) => (
+	<tr className="buffer-time dt-buffer-time">
+		<td>Buffer Time</td>
+		<td colSpan={3}>{bufferTime ? bufferTime : 0}m</td>
+	</tr>
+);
 
 const TimetableViewComponent = forwardRef<
 	TimetableViewComponentRef,
@@ -35,12 +74,6 @@ const TimetableViewComponent = forwardRef<
 	const [progressEstimate, setProgressEstimate] = useState(0);
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const taskManager = taskFunctions(plugin);
-
-	const formatDateToTime = (date: Date) => {
-		const hours = date.getHours().toString().padStart(2, "0");
-		const minutes = date.getMinutes().toString().padStart(2, "0");
-		return `${hours}:${minutes}`;
-	};
 
 	const calculateBufferTime = (
 		currentTaskEndTime: Date | null,
@@ -145,19 +178,12 @@ const TimetableViewComponent = forwardRef<
 				<tbody>
 					{filteredTasks.flatMap((task, index, allTasks) => {
 						const previousTask = allTasks[index - 1];
-						const bufferTime =
-							previousTask &&
-							calculateBufferTime(
-								previousTask.endTime || new Date(),
-								task.startTime
-							);
+						const bufferTime = calculateBufferTime(
+							previousTask?.endTime || new Date(),
+							task.startTime
+						);
 
-						let bufferClass = "";
-						if (bufferTime && !task.isCompleted) {
-							bufferClass = bufferTime < 0 ? "late" : "on-time";
-						}
-
-						const rows: JSX.Element[] = [];
+						const rows = [];
 
 						if (
 							bufferTime &&
@@ -165,40 +191,20 @@ const TimetableViewComponent = forwardRef<
 							!task.isCompleted
 						) {
 							rows.push(
-								<tr
+								<BufferTimeRow
 									key={`buffer-${index}`}
-									className="buffer-time dt-buffer-time"
-								>
-									<td>Buffer Time</td>
-									<td colSpan={3}>{bufferTime}m</td>
-								</tr>
+									bufferTime={bufferTime}
+								/>
 							);
 						}
 
 						rows.push(
-							<tr
+							<TaskRow
 								key={`task-${index}`}
-								className={`${bufferClass} ${
-									task.isCompleted ? "dt-completed" : ""
-								}`}
-							>
-								<td>{task.task}</td>
-								{plugin.settings.showEstimate && (
-									<td>{task.estimate}</td>
-								)}
-								{plugin.settings.showStartTime && (
-									<td>
-										{task.startTime
-											? formatDateToTime(task.startTime)
-											: ""}
-									</td>
-								)}
-								<td>
-									{task.endTime
-										? formatDateToTime(task.endTime)
-										: ""}
-								</td>
-							</tr>
+								task={task}
+								plugin={plugin}
+								bufferTime={bufferTime}
+							/>
 						);
 
 						return rows;
