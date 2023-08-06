@@ -1,6 +1,8 @@
 import { Plugin, WorkspaceLeaf, TFile, Notice } from "obsidian";
 import { TimetableView } from "./TimetableView";
 import { DynamicTimetableSettingTab } from "./Settings";
+import { taskFunctions } from "./TaskManager";
+import { Task } from "./TaskParser";
 
 export interface DynamicTimetableSettings {
 	filePath: string | null;
@@ -29,6 +31,7 @@ declare module "obsidian" {
 export default class DynamicTimetable extends Plugin {
 	settings: DynamicTimetableSettings;
 	targetFile: TFile | null = null;
+	tasks: Task[] = [];
 
 	static DEFAULT_SETTINGS: DynamicTimetableSettings = {
 		filePath: null,
@@ -61,6 +64,9 @@ export default class DynamicTimetable extends Plugin {
 		this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
 
 		this.addToggleTimetableCommand();
+		this.addInitTimetableViewCommand();
+		this.addCompleteTaskCommand();
+		this.addInterruptTaskCommand();
 		this.registerView(
 			"Timetable",
 			(leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
@@ -88,6 +94,9 @@ export default class DynamicTimetable extends Plugin {
 	}
 
 	async initTimetableView() {
+		const taskManager = taskFunctions(this);
+		const newTasks = await taskManager.initializeTasks();
+		this.tasks = newTasks;
 		if (!this.isTimetableOpen()) {
 			this.openTimetable();
 		} else {
@@ -105,6 +114,48 @@ export default class DynamicTimetable extends Plugin {
 					this.openTimetable();
 				} else {
 					this.closeTimetable();
+				}
+			},
+		});
+	}
+
+	private addInitTimetableViewCommand(): void {
+		this.addCommand({
+			id: "init-timetable-view",
+			name: "Initialize Timetable View",
+			callback: () => {
+				this.initTimetableView();
+			},
+		});
+	}
+
+	private addCompleteTaskCommand(): void {
+		this.addCommand({
+			id: "complete-task",
+			name: "Complete Task",
+			callback: () => {
+				const taskManager = taskFunctions(this);
+				const firstUncompletedTask = this.tasks.find(
+					(task) => !task.isCompleted
+				);
+				if (firstUncompletedTask) {
+					taskManager.completeTask(firstUncompletedTask);
+				}
+			},
+		});
+	}
+
+	private addInterruptTaskCommand(): void {
+		this.addCommand({
+			id: "interrupt-task",
+			name: "Interrupt Task",
+			callback: () => {
+				const taskManager = taskFunctions(this);
+				const firstUncompletedTask = this.tasks.find(
+					(task) => !task.isCompleted
+				);
+				if (firstUncompletedTask) {
+					taskManager.interruptTask(firstUncompletedTask);
 				}
 			},
 		});
