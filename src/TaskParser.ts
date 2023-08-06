@@ -9,17 +9,23 @@ export interface Task {
 }
 
 export class TaskParser {
+	private dateDelimiter: RegExp;
+
 	constructor(
 		private separator: string,
 		private startTimeDelimiter: string,
+		dateDelimiter: string,
 		private showStartTimeInTaskName: boolean,
 		private showEstimateInTaskName: boolean
-	) {}
+	) {
+		this.dateDelimiter = new RegExp(dateDelimiter);
+	}
 
 	static fromSettings(settings: DynamicTimetableSettings): TaskParser {
 		return new TaskParser(
 			settings.taskEstimateDelimiter,
 			settings.startTimeDelimiter,
+			settings.dateDelimiter,
 			settings.showStartTimeInTaskName,
 			settings.showEstimateInTaskName
 		);
@@ -31,22 +37,31 @@ export class TaskParser {
 	): Task[] {
 		let previousEndTime: Date | null = null;
 		let firstUncompletedTaskFound = false;
+		let nextDay = 0;
+		let dateDelimiterFound = false;
 
 		const tasks = content
 			.split("\n")
 			.map((line) => line.trim())
-			.filter(
-				(line) => line.startsWith("- [ ]") || line.startsWith("- [x]")
-			)
-			.filter(
-				(task) =>
-					task.includes(this.separator) ||
-					task.includes(this.startTimeDelimiter)
-			)
-			.map((task) => {
+			.reduce((acc: Task[], task) => {
+				if (this.isDateDelimiterLine(task)) {
+					dateDelimiterFound = true;
+					return acc;
+				}
+
+				if (!task.startsWith("- [ ]") && !task.startsWith("- [x]")) {
+					return acc;
+				}
+
 				const isCompleted = task.startsWith("- [x]");
 				const taskName = this.parseTaskName(task);
-				let startTime = this.parseStartTime(task);
+
+				if (dateDelimiterFound) {
+					nextDay++;
+					dateDelimiterFound = false;
+				}
+
+				let startTime = this.parseStartTime(task, nextDay);
 				const estimate = this.parseEstimate(task);
 
 				if (
@@ -67,16 +82,22 @@ export class TaskParser {
 					previousEndTime = endTime;
 				}
 
-				return {
+				acc.push({
 					task: taskName,
 					startTime: startTime,
 					estimate: estimate,
 					endTime: endTime,
 					isCompleted: isCompleted,
-				};
-			});
+				});
+
+				return acc;
+			}, []);
 
 		return tasks;
+	}
+
+	private isDateDelimiterLine(line: string): boolean {
+		return this.dateDelimiter.test(line);
 	}
 
 	public parseTaskName(taskName: string): string {
@@ -112,7 +133,7 @@ export class TaskParser {
 		return taskName;
 	}
 
-	public parseStartTime(task: string): Date | null {
+	public parseStartTime(task: string, nextDay: number): Date | null {
 		const timeRegex = new RegExp(
 			`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:\\d{2})`
 		);
@@ -131,7 +152,10 @@ export class TaskParser {
 		} else if (timeMatch) {
 			const currentTime = new Date();
 			const [hours, minutes] = timeMatch[1].split(":").map(Number);
-			const startDate = new Date(currentTime.setHours(hours, minutes));
+			const startDate = new Date(
+				currentTime.setDate(currentTime.getDate() + nextDay)
+			);
+			startDate.setHours(hours, minutes);
 			return startDate;
 		}
 
