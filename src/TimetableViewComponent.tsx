@@ -157,6 +157,7 @@ const TimetableViewComponent = forwardRef<
             if (
               bufferTime &&
               plugin.settings.showBufferTime &&
+              task !== firstUncompletedTask &&
               !task.isCompleted
             ) {
               rows.push(
