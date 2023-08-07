@@ -1,141 +1,202 @@
-import { TaskParser } from './TaskParser';
-import { TableRenderer } from './TableRenderer';
-import DynamicTimetable, { Task } from './main';
+import { TaskParser, Task as ImportedTask } from "./TaskParser";
+import DynamicTimetable from "./main";
 
-interface TaskUpdate {
-  task: Task;
-  elapsedTime: number;
-  remainingTime?: number;
-}
+export type Task = ImportedTask & {
+	previousTaskEndTime?: Date | null;
+};
 
-export class TaskManager {
-  private taskParser: TaskParser;
-  private plugin: DynamicTimetable;
+type TaskUpdate = {
+	task: Task;
+	elapsedTime: number;
+	remainingTime: number | undefined;
+};
 
-  constructor(plugin: DynamicTimetable) {
-    this.plugin = plugin;
-  }
+export const taskFunctions = (plugin: DynamicTimetable) => {
+	const getYamlStartTime = (content: string): Date | null => {
+		const match = content.match(
+			/^startTime: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/m
+		);
+		if (match) {
+			return new Date(match[1]);
+		}
+		return null;
+	};
 
-  async initializeTasks() {
-    if (!this.plugin.targetFile) {
-      return [];
-    }
-    const content = await this.plugin.app.vault.cachedRead(
-      this.plugin.targetFile
-    );
-    this.taskParser = TaskParser.fromSettings(this.plugin.settings);
-    let tasks = this.taskParser.parseTasksFromContent(content);
+	const formatTime = (date: Date): string => {
+		let hours = date.getHours();
+		let minutes = date.getMinutes();
+		if (minutes === 0) {
+			return `${hours.toString().padStart(2, "0")}00`;
+		}
+		return `${hours.toString().padStart(2, "0")}:${minutes
+			.toString()
+			.padStart(2, "0")}`;
+	};
 
-    if (tasks.length > 0 && tasks[0].startTime === null) {
-      tasks[0].startTime = new Date(this.plugin.targetFile.stat.mtime);
-    }
-    return tasks;
-  }
+	const updateStartTimeInYAML = (
+		content: string,
+		startTime: Date
+	): string => {
+		const formattedTime = `${startTime.getFullYear()}-${(
+			startTime.getMonth() + 1
+		)
+			.toString()
+			.padStart(2, "0")}-${startTime
+			.getDate()
+			.toString()
+			.padStart(2, "0")} ${startTime
+			.getHours()
+			.toString()
+			.padStart(2, "0")}:${startTime
+			.getMinutes()
+			.toString()
+			.padStart(2, "0")}:${startTime
+			.getSeconds()
+			.toString()
+			.padStart(2, "0")}`;
 
-  private async updateTask(task: Task, remainingTime?: number): Promise<void> {
-    if (!this.plugin.targetFile || !task.estimate) {
-      return;
-    }
+		const yamlStartTimeRegex =
+			/(^startTime: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/m;
+		const yamlBlockMatch = content.match(/---\n([\s\S]*?)\n---/m);
 
-    let content = await this.plugin.app.vault.cachedRead(
-      this.plugin.targetFile
-    );
-    let elapsedTime = this.getElapsedTime(task);
-    const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
-    content = this.updateTaskInContent(content, taskUpdate);
+		if (yamlBlockMatch && yamlBlockMatch.length > 1) {
+			let yamlBlock = yamlBlockMatch[1];
+			if (yamlStartTimeRegex.test(yamlBlock)) {
+				yamlBlock = yamlBlock.replace(
+					yamlStartTimeRegex,
+					`startTime: ${formattedTime}`
+				);
+			} else {
+				yamlBlock = yamlBlock + `\nstartTime: ${formattedTime}`;
+			}
+			return content.replace(
+				/---\n([\s\S]*?)\n---/m,
+				`---\n${yamlBlock}\n---`
+			);
+		} else {
+			return `---\nstartTime: ${formattedTime}\n---\n` + content;
+		}
+	};
 
-    await this.plugin.app.vault.modify(this.plugin.targetFile, content);
-  }
+	const getElapsedTime = (content: string) => {
+		const startTime = getYamlStartTime(content);
+		if (!startTime) return 0;
+		const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+		return Math.max(0, Math.floor(elapsedTimeInMinutes));
+	};
 
-  async completeTask(task: Task): Promise<void> {
-    this.updateTask(task);
-  }
+	const updateTaskInContent = (
+		content: string,
+		{ elapsedTime, remainingTime }: TaskUpdate
+	): string => {
+		const taskRegex = new RegExp(
+			`^- \\[ \\] (.+?)(\\s*${plugin.settings.taskEstimateDelimiter.replace(
+				/[.*+?^${}()|[\]\\]/g,
+				"\\$&"
+			)}\\s*(\\d+\\.?\\d*)|\\s*@\\s*\\d{1,2}[:]?\\d{2})`,
+			"m"
+		);
 
-  async interruptTask(task: Task): Promise<void> {
-    let elapsedTime = this.getElapsedTime(task);
-    let remainingTime = 0;
-    if (task.estimate !== null) {
-      remainingTime = Math.max(
-        0,
-        Math.floor(parseFloat(task.estimate) - elapsedTime)
-      );
-    }
-    this.updateTask(task, remainingTime);
-  }
+		const lines = content.split("\n");
+		for (let i = 0; i < lines.length; i++) {
+			const taskMatch = lines[i].match(taskRegex);
+			if (taskMatch) {
+				const originalTaskName = taskMatch[1];
+				const actualStartTime = new Date(
+					Date.now() - elapsedTime * 60 * 1000
+				);
 
-  private getElapsedTime(task: Task): number {
-    const startTime = task.previousEndTime || null;
+				lines[i] = `- [x] ${originalTaskName} ${
+					plugin.settings.taskEstimateDelimiter
+				} ${elapsedTime.toFixed(0)} @ ${formatTime(actualStartTime)}`;
 
-    if (!startTime) {
-      return 0;
-    }
+				if (remainingTime !== undefined) {
+					const newTaskToAdd = `- [ ] ${originalTaskName} ${
+						plugin.settings.taskEstimateDelimiter
+					} ${remainingTime.toFixed(0)}`;
+					lines.splice(i + 1, 0, newTaskToAdd);
+				}
+				break;
+			}
+		}
+		return lines.join("\n");
+	};
 
-    let elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+	const initializeTasks = async () => {
+		if (!plugin.targetFile) {
+			return [];
+		}
+		const content = await plugin.app.vault.cachedRead(plugin.targetFile);
+		const taskParser = TaskParser.fromSettings(plugin.settings);
+		const yamlStartTime = getYamlStartTime(content);
+		let tasks: Task[] = taskParser.filterAndParseTasks(
+			content,
+			yamlStartTime
+		);
 
-    if (elapsedTimeInMinutes < 0) {
-      elapsedTimeInMinutes += 24 * 60;
-    }
+		let previousTaskEndTime = null;
+		for (let task of tasks) {
+			task.previousTaskEndTime = previousTaskEndTime;
+			previousTaskEndTime = task.endTime;
+		}
 
-    return Math.max(0, Math.floor(elapsedTimeInMinutes));
-  }
+		if (tasks.length > 0) {
+			tasks[0].startTime =
+				yamlStartTime || new Date(plugin.targetFile.stat.mtime);
+		}
+		return tasks;
+	};
 
-  private updateTaskInContent(
-    content: string,
-    { task, elapsedTime, remainingTime }: TaskUpdate
-  ): string {
-    let startTime = task.task.match(
-      new RegExp(`\\s*@\\s*(\\d{1,2}[:]?\\d{2})\\s*$`)
-    );
+	const updateTask = async (task: Task, remainingTime?: number) => {
+		if (!plugin.targetFile || !task.estimate) {
+			return;
+		}
 
-    if (startTime && startTime[1].length === 4) {
-      startTime[1] = startTime[1].slice(0, 2) + ':' + startTime[1].slice(2);
-    }
+		let content = await plugin.app.vault.cachedRead(plugin.targetFile);
+		let elapsedTime = getElapsedTime(content);
+		const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
-    const actualStartTime = new Date(
-      Date.now() - elapsedTime * TableRenderer.MILLISECONDS_IN_MINUTE
-    );
+		content = updateTaskInContent(content, taskUpdate);
 
-    const taskRegex = new RegExp(
-      `^- \\[ \\] (.+?)(\\s*${this.plugin.settings.taskEstimateDelimiter.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        '\\$&'
-      )}\\s*${task.estimate}|\\s*@\\s*\\d{1,2}[:]?\\d{2})`,
-      'm'
-    );
+		const now = new Date();
+		content = updateStartTimeInYAML(content, now);
 
-    const lines = content.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const taskMatch = lines[i].match(taskRegex);
-      if (taskMatch) {
-        const originalTaskName = taskMatch[1];
-        let newTaskLine = `- [x] ${originalTaskName} ${
-          this.plugin.settings.taskEstimateDelimiter
-        } ${elapsedTime.toFixed(0)}`;
+		await plugin.app.vault.modify(plugin.targetFile, content);
+	};
 
-        newTaskLine += ` @ ${this.formatTime(actualStartTime)}`;
+	const completeTask = async (task: Task) => {
+		await updateTask(task, undefined);
+	};
 
-        if (remainingTime !== undefined) {
-          newTaskLine += `\n- [ ] ${originalTaskName} ${
-            this.plugin.settings.taskEstimateDelimiter
-          } ${remainingTime.toFixed(0)}`;
-        }
-        lines[i] = newTaskLine;
-        break;
-      }
-    }
-    return lines.join('\n');
-  }
+	const interruptTask = async (task: Task) => {
+		if (!plugin.targetFile) {
+			return;
+		}
+		let content = await plugin.app.vault.cachedRead(plugin.targetFile);
+		let elapsedTime = getElapsedTime(content);
+		let remainingTime = 0;
+		if (task.estimate !== null) {
+			remainingTime = Math.max(
+				0,
+				Math.floor(parseFloat(task.estimate) - elapsedTime)
+			);
+		}
 
-  private formatTime(date: Date): string {
-    let hours = date.getHours();
-    let minutes = date.getMinutes();
+		if (remainingTime <= 0) {
+			remainingTime = 0;
+		}
 
-    if (minutes === 0) {
-      return `${hours.toString().padStart(2, '0')}00`;
-    }
+		await updateTask(task, remainingTime);
+	};
 
-    return `${hours.toString().padStart(2, '0')}:${minutes
-      .toString()
-      .padStart(2, '0')}`;
-  }
-}
+	return {
+		initializeTasks,
+		completeTask,
+		interruptTask,
+		getElapsedTime,
+		updateTask,
+		updateTaskInContent,
+		formatTime,
+		getYamlStartTime,
+	};
+};
