@@ -49,7 +49,14 @@ export class TaskParser {
 					return acc;
 				}
 
-				if (!task.startsWith("- [ ]") && !task.startsWith("- [x]")) {
+				if (
+					!task.startsWith("- [ ]") &&
+					!task.startsWith("- [x]") &&
+					!task.startsWith("+ [ ]") &&
+					!task.startsWith("+ [x]") &&
+					!task.startsWith("* [ ]") &&
+					!task.startsWith("* [x]")
+				) {
 					return acc;
 				}
 
@@ -102,7 +109,7 @@ export class TaskParser {
 	}
 
 	public parseTaskName(taskName: string): string {
-		const taskNameRegex = /^-\s*\[\s*.\s*\]\s*/;
+		const taskNameRegex = /^[-+*]\s*\[\s*.\s*\]\s*/;
 		const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
 		const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
 
@@ -114,7 +121,7 @@ export class TaskParser {
 			.trim();
 
 		const startTimeRegex = new RegExp(
-			`\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:\\d{2})`
+			`\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:?\\d{2})`
 		);
 
 		if (this.showStartTimeInTaskName) {
@@ -136,7 +143,7 @@ export class TaskParser {
 
 	public parseStartTime(task: string, nextDay: number): Date | null {
 		const timeRegex = new RegExp(
-			`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:\\d{2})`
+			`\\${this.startTimeDelimiter}\\s*(\\d{1,2}:?\\d{2})`
 		);
 		const dateTimeRegex = new RegExp(
 			`\\${this.startTimeDelimiter}\\s*(\\d{4}-\\d{2}-\\d{2}T\\d{1,2}:\\d{2})`
@@ -152,7 +159,16 @@ export class TaskParser {
 			}
 		} else if (timeMatch) {
 			const currentTime = new Date();
-			const [hours, minutes] = timeMatch[1].split(":").map(Number);
+			let hoursStr: string;
+			let minutesStr: string;
+			if (timeMatch[1].includes(":")) {
+				[hoursStr, minutesStr] = timeMatch[1].split(":");
+			} else {
+				hoursStr = timeMatch[1].substring(0, 2);
+				minutesStr = timeMatch[1].substring(2);
+			}
+			const hours = parseInt(hoursStr);
+			const minutes = parseInt(minutesStr);
 			const startDate = new Date(
 				currentTime.setDate(currentTime.getDate() + nextDay)
 			);
