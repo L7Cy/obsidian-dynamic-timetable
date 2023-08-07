@@ -10,65 +10,13 @@ import { Task, taskFunctions } from "./TaskManager";
 import { ButtonContainer } from "./Button";
 import ProgressBar from "./ProgressBar";
 import { CommandsManager } from "./Commands";
-
-type TaskRowProps = {
-	task: Task;
-	plugin: DynamicTimetable;
-	bufferTime: number | null;
-	firstUncompletedTaskRef: React.MutableRefObject<HTMLTableRowElement | null> | null;
-};
-
-type BufferTimeRowProps = {
-	bufferTime: number | null;
-};
+import BufferTimeRow from "./BufferTimeRow";
+import TaskRow from "./TaskRow";
 
 export type TimetableViewComponentRef = {
 	update: () => Promise<void>;
 	scrollToFirstUncompletedTask: () => void;
 };
-
-const formatDateToTime = (date: Date) => {
-	const hours = date.getHours().toString().padStart(2, "0");
-	const minutes = date.getMinutes().toString().padStart(2, "0");
-	return `${hours}:${minutes}`;
-};
-
-const TaskRow: React.FC<TaskRowProps> = ({
-	task,
-	plugin,
-	bufferTime,
-	firstUncompletedTaskRef,
-}) => {
-	let bufferClass = "";
-	if (bufferTime && bufferTime !== null && !task.isCompleted) {
-		bufferClass = bufferTime < 0 ? "late" : "on-time";
-	}
-
-	return (
-		<tr
-			ref={task.isCompleted ? null : firstUncompletedTaskRef}
-			className={`${bufferClass} ${
-				task.isCompleted ? "dt-completed" : ""
-			}`}
-		>
-			<td>{task.task}</td>
-			{plugin.settings.showEstimate && <td>{task.estimate}</td>}
-			{plugin.settings.showStartTime && (
-				<td>
-					{task.startTime ? formatDateToTime(task.startTime) : ""}
-				</td>
-			)}
-			<td>{task.endTime ? formatDateToTime(task.endTime) : ""}</td>
-		</tr>
-	);
-};
-
-const BufferTimeRow: React.FC<BufferTimeRowProps> = ({ bufferTime }) => (
-	<tr className="buffer-time dt-buffer-time">
-		<td>Buffer Time</td>
-		<td colSpan={3}>{bufferTime ? bufferTime : 0}m</td>
-	</tr>
-);
 
 const TimetableViewComponent = forwardRef<
 	TimetableViewComponentRef,
