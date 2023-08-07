@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Notice } from "obsidian";
 
 type ProgressBarProps = {
@@ -12,12 +12,19 @@ const ProgressBar = ({
 	estimate,
 	enableOverdueNotice,
 }: ProgressBarProps) => {
+	const [notice, setNotice] = useState<Notice | null>(null);
 	const width = Math.min((duration / estimate) * 100, 100);
 	const isOverdue = width === 100;
 
-	if (isOverdue && enableOverdueNotice) {
-		new Notice("Are you finished?", 0);
-	}
+	useEffect(() => {
+		if (isOverdue && enableOverdueNotice && !notice) {
+			const newNotice = new Notice("Are you finished?", 0);
+			setNotice(newNotice);
+		} else if (!isOverdue && notice) {
+			notice.hide();
+			setNotice(null);
+		}
+	}, [isOverdue, enableOverdueNotice, notice]);
 
 	return (
 		<div className="dt-progress-bar-container">
