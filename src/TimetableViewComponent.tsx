@@ -15,6 +15,7 @@ type TaskRowProps = {
 	task: Task;
 	plugin: DynamicTimetable;
 	bufferTime: number | null;
+	firstUncompletedTaskRef: React.MutableRefObject<HTMLTableRowElement | null> | null;
 };
 
 type BufferTimeRowProps = {
@@ -23,15 +24,21 @@ type BufferTimeRowProps = {
 
 export type TimetableViewComponentRef = {
 	update: () => Promise<void>;
+	scrollToFirstUncompletedTask: () => void;
 };
 
-const TaskRow: React.FC<TaskRowProps> = ({ task, plugin, bufferTime }) => {
-	const formatDateToTime = (date: Date) => {
-		const hours = date.getHours().toString().padStart(2, "0");
-		const minutes = date.getMinutes().toString().padStart(2, "0");
-		return `${hours}:${minutes}`;
-	};
+const formatDateToTime = (date: Date) => {
+	const hours = date.getHours().toString().padStart(2, "0");
+	const minutes = date.getMinutes().toString().padStart(2, "0");
+	return `${hours}:${minutes}`;
+};
 
+const TaskRow: React.FC<TaskRowProps> = ({
+	task,
+	plugin,
+	bufferTime,
+	firstUncompletedTaskRef,
+}) => {
 	let bufferClass = "";
 	if (bufferTime && bufferTime !== null && !task.isCompleted) {
 		bufferClass = bufferTime < 0 ? "late" : "on-time";
@@ -39,6 +46,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, plugin, bufferTime }) => {
 
 	return (
 		<tr
+			ref={task.isCompleted ? null : firstUncompletedTaskRef}
 			className={`${bufferClass} ${
 				task.isCompleted ? "dt-completed" : ""
 			}`}
@@ -69,11 +77,13 @@ const TimetableViewComponent = forwardRef<
 		commandsManager: CommandsManager;
 	}
 >(({ plugin, commandsManager }, ref) => {
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const firstUncompletedTaskRef = useRef<HTMLTableRowElement | null>(null);
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [progressDuration, setProgressDuration] = useState(0);
 	const [progressEstimate, setProgressEstimate] = useState(0);
-	const containerRef = useRef<HTMLDivElement | null>(null);
 	const taskManager = taskFunctions(plugin);
+	const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
 
 	const calculateBufferTime = (
 		currentTaskEndTime: Date | null,
@@ -110,8 +120,6 @@ const TimetableViewComponent = forwardRef<
 		? tasks
 		: tasks.filter((task) => !task.isCompleted);
 
-	useImperativeHandle(ref, () => ({ update }));
-
 	useEffect(() => {
 		const onFileModify = async (file: any) => {
 			if (file === plugin.targetFile) {
@@ -145,6 +153,22 @@ const TimetableViewComponent = forwardRef<
 		return () => clearInterval(intervalId);
 	}, [containerRef.current, tasks]);
 
+	useImperativeHandle(ref, () => ({
+		update,
+		scrollToFirstUncompletedTask: () => {
+			if (firstUncompletedTaskRef.current && containerRef.current) {
+				const containerHeight = containerRef.current.offsetHeight;
+				const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
+				const scrollToPosition = taskOffsetTop - containerHeight / 4;
+
+				containerRef.current.scrollTo({
+					top: scrollToPosition,
+					behavior: "smooth",
+				});
+			}
+		},
+	}));
+
 	return (
 		<div
 			ref={containerRef}
@@ -158,9 +182,7 @@ const TimetableViewComponent = forwardRef<
 					enableOverdueNotice={plugin.settings.enableOverdueNotice}
 				/>
 			)}
-			<ButtonContainer
-				commandsManager={commandsManager}
-			/>
+			<ButtonContainer commandsManager={commandsManager} />
 			<table className="dt-table">
 				<thead>
 					<tr>
@@ -203,6 +225,11 @@ const TimetableViewComponent = forwardRef<
 								task={task}
 								plugin={plugin}
 								bufferTime={bufferTime}
+								firstUncompletedTaskRef={
+									task === firstUncompletedTask
+										? firstUncompletedTaskRef
+										: null
+								}
 							/>
 						);
 

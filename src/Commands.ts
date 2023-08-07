@@ -20,7 +20,8 @@ export class CommandsManager {
 
 	initializeTimetableView(): void {
 		this.plugin.initTimetableView();
-        new Notice('Timetable initialized!', 1000);
+		this.plugin.timetableViewComponentRef.current?.scrollToFirstUncompletedTask();
+		new Notice("Timetable initialized!", 1000);
 	}
 
 	completeTask(): void {
@@ -30,6 +31,7 @@ export class CommandsManager {
 		);
 		if (firstUncompletedTask) {
 			taskManager.completeTask(firstUncompletedTask);
+			this.plugin.timetableViewComponentRef.current?.scrollToFirstUncompletedTask();
 		}
 	}
 
@@ -40,6 +42,7 @@ export class CommandsManager {
 		);
 		if (firstUncompletedTask) {
 			taskManager.interruptTask(firstUncompletedTask);
+			this.plugin.timetableViewComponentRef.current?.scrollToFirstUncompletedTask();
 		}
 	}
 }

@@ -4,6 +4,8 @@ import { DynamicTimetableSettingTab } from "./Settings";
 import { taskFunctions } from "./TaskManager";
 import { Task } from "./TaskParser";
 import { CommandsManager } from "./Commands";
+import { TimetableViewComponentRef } from "./TimetableViewComponent";
+import React from "react";
 
 export interface DynamicTimetableSettings {
 	filePath: string | null;
@@ -35,6 +37,7 @@ export default class DynamicTimetable extends Plugin {
 	tasks: Task[] = [];
 
 	private commandsManager: CommandsManager;
+	timetableViewComponentRef: React.RefObject<TimetableViewComponentRef>;
 
 	static DEFAULT_SETTINGS: DynamicTimetableSettings = {
 		filePath: null,
@@ -83,6 +86,7 @@ export default class DynamicTimetable extends Plugin {
 				)
 			);
 		}
+		this.timetableViewComponentRef = React.createRef<TimetableViewComponentRef>();
 	}
 
 	initCommands(): void {
