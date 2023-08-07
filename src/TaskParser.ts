@@ -18,7 +18,9 @@ export class TaskParser {
 		private showStartTimeInTaskName: boolean,
 		private showEstimateInTaskName: boolean
 	) {
-		this.dateDelimiter = new RegExp(dateDelimiter);
+		this.dateDelimiter = dateDelimiter
+			? new RegExp(dateDelimiter)
+			: /(?!x)x/;
 	}
 
 	static fromSettings(settings: DynamicTimetableSettings): TaskParser {
