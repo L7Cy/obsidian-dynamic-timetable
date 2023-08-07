@@ -70,7 +70,7 @@ export class TaskParser {
 					dateDelimiterFound = false;
 				}
 
-				const estimate = this.parseEstimate(task) || "0";
+				const estimate = this.parseEstimate(task);
 
 				let startTime = this.parseStartTime(task, nextDay);
 
@@ -92,13 +92,15 @@ export class TaskParser {
 					previousEndTime = endTime;
 				}
 
-				acc.push({
-					task: taskName,
-					startTime: startTime,
-					estimate: estimate,
-					endTime: endTime,
-					isCompleted: isCompleted,
-				});
+				if (estimate) {
+					acc.push({
+						task: taskName,
+						startTime: startTime,
+						estimate: estimate,
+						endTime: endTime,
+						isCompleted: isCompleted,
+					});
+				}
 
 				return acc;
 			}, []);
