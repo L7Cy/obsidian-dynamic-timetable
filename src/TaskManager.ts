@@ -78,34 +78,22 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 		}
 	};
 
-	const getElapsedTime = (task: Task) => {
-		const previousTaskEndTime = task.previousTaskEndTime || null;
-		if (!previousTaskEndTime) return 0;
-		const elapsedTimeInMinutes =
-			(Date.now() - previousTaskEndTime.getTime()) / 60000;
+	const getElapsedTime = (content: string) => {
+		const startTime = getYamlStartTime(content);
+		if (!startTime) return 0;
+		const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
 		return Math.max(0, Math.floor(elapsedTimeInMinutes));
 	};
 
 	const updateTaskInContent = (
 		content: string,
-		{ task, elapsedTime, remainingTime }: TaskUpdate
+		{ elapsedTime, remainingTime }: TaskUpdate
 	): string => {
-		let startTime = task.task.match(
-			new RegExp(`\\s*@\\s*(\\d{1,2}[:]?\\d{2})\\s*$`)
-		);
-
-		if (startTime && startTime[1].length === 4) {
-			startTime[1] =
-				startTime[1].slice(0, 2) + ":" + startTime[1].slice(2);
-		}
-
-		const actualStartTime = new Date(Date.now() - elapsedTime * 60 * 1000);
-
 		const taskRegex = new RegExp(
 			`^- \\[ \\] (.+?)(\\s*${plugin.settings.taskEstimateDelimiter.replace(
 				/[.*+?^${}()|[\]\\]/g,
 				"\\$&"
-			)}\\s*${task.estimate}|\\s*@\\s*\\d{1,2}[:]?\\d{2})`,
+			)}\\s*(\\d+\\.?\\d*)|\\s*@\\s*\\d{1,2}[:]?\\d{2})`,
 			"m"
 		);
 
@@ -114,43 +102,24 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 			const taskMatch = lines[i].match(taskRegex);
 			if (taskMatch) {
 				const originalTaskName = taskMatch[1];
-				let newTaskLine = `- [x] ${originalTaskName} ${
-					plugin.settings.taskEstimateDelimiter
-				} ${elapsedTime.toFixed(0)}`;
+				const actualStartTime = new Date(
+					Date.now() - elapsedTime * 60 * 1000
+				);
 
-				newTaskLine += ` @ ${formatTime(actualStartTime)}`;
+				lines[i] = `- [x] ${originalTaskName} ${
+					plugin.settings.taskEstimateDelimiter
+				} ${elapsedTime.toFixed(0)} @ ${formatTime(actualStartTime)}`;
 
 				if (remainingTime !== undefined) {
-					newTaskLine += `\n- [ ] ${originalTaskName} ${
+					const newTaskToAdd = `- [ ] ${originalTaskName} ${
 						plugin.settings.taskEstimateDelimiter
 					} ${remainingTime.toFixed(0)}`;
+					lines.splice(i + 1, 0, newTaskToAdd);
 				}
-				lines[i] = newTaskLine;
 				break;
 			}
 		}
 		return lines.join("\n");
-	};
-
-	const setCurrentTaskStartTimeInYAML = async () => {
-		if (!plugin.targetFile) {
-			return;
-		}
-		let content = await plugin.app.vault.cachedRead(plugin.targetFile);
-		const taskParser = TaskParser.fromSettings(plugin.settings);
-		const yamlStartTime = getYamlStartTime(content);
-		let tasks: Task[] = taskParser.filterAndParseTasks(
-			content,
-			yamlStartTime
-		);
-
-		if (tasks.length > 0) {
-			const currentTaskStartTime = tasks[0].startTime;
-			if (currentTaskStartTime) {
-				content = updateStartTimeInYAML(content, currentTaskStartTime);
-				await plugin.app.vault.modify(plugin.targetFile, content);
-			}
-		}
 	};
 
 	const initializeTasks = async () => {
@@ -184,17 +153,10 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 		}
 
 		let content = await plugin.app.vault.cachedRead(plugin.targetFile);
-		let elapsedTime = getElapsedTime(task);
+		let elapsedTime = getElapsedTime(content);
 		const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
 		content = updateTaskInContent(content, taskUpdate);
-
-		const tasks: Task[] = await initializeTasks();
-		const currentTask = tasks[0];
-
-		if (currentTask && currentTask.startTime) {
-			content = updateStartTimeInYAML(content, currentTask.startTime);
-		}
 
 		const now = new Date();
 		content = updateStartTimeInYAML(content, now);
@@ -202,13 +164,16 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 		await plugin.app.vault.modify(plugin.targetFile, content);
 	};
 
-	const completeTask = (task: Task) => {
-		updateTask(task, undefined);
-		setCurrentTaskStartTimeInYAML();
+	const completeTask = async (task: Task) => {
+		await updateTask(task, undefined);
 	};
 
-	const interruptTask = (task: Task) => {
-		let elapsedTime = getElapsedTime(task);
+	const interruptTask = async (task: Task) => {
+		if (!plugin.targetFile) {
+			return;
+		}
+		let content = await plugin.app.vault.cachedRead(plugin.targetFile);
+		let elapsedTime = getElapsedTime(content);
 		let remainingTime = 0;
 		if (task.estimate !== null) {
 			remainingTime = Math.max(
@@ -221,8 +186,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 			remainingTime = 0;
 		}
 
-		updateTask(task, remainingTime);
-		setCurrentTaskStartTimeInYAML();
+		await updateTask(task, remainingTime);
 	};
 
 	return {
