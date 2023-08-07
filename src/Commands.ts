@@ -1,3 +1,4 @@
+import { Notice } from "obsidian";
 import DynamicTimetable from "./main";
 import { taskFunctions } from "./TaskManager";
 
@@ -19,6 +20,7 @@ export class CommandsManager {
 
 	initializeTimetableView(): void {
 		this.plugin.initTimetableView();
+        new Notice('Timetable initialized!', 1000);
 	}
 
 	completeTask(): void {

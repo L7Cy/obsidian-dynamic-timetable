@@ -159,7 +159,6 @@ const TimetableViewComponent = forwardRef<
 				/>
 			)}
 			<ButtonContainer
-				plugin={plugin}
 				commandsManager={commandsManager}
 			/>
 			<table className="dt-table">

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { setIcon } from "obsidian";
 import { CommandsManager } from "./Commands";
-import DynamicTimetable from "./main";
 
 type ButtonProps = {
 	onClick: () => void;
@@ -20,12 +19,10 @@ const ButtonWithIcon = ({ onClick, buttonRef, icon }: ButtonProps) => {
 };
 
 type ButtonContainerProps = {
-	plugin: DynamicTimetable;
 	commandsManager: CommandsManager;
 };
 
 export const ButtonContainer = ({
-	plugin,
 	commandsManager,
 }: ButtonContainerProps) => {
 	const completeButtonRef = useRef(null);
@@ -46,7 +43,7 @@ export const ButtonContainer = ({
 			/>
 			<ButtonWithIcon
 				buttonRef={initButtonRef}
-				onClick={() => plugin.initTimetableView()}
+				onClick={() => commandsManager.initializeTimetableView()}
 				icon="refresh-ccw"
 			/>
 		</div>
