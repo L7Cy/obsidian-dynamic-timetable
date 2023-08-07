@@ -96,6 +96,19 @@ const TimetableViewComponent = forwardRef<
     return () => clearInterval(intervalId);
   }, [containerRef.current, tasks]);
 
+  useEffect(() => {
+    if (firstUncompletedTaskRef.current && containerRef.current) {
+      const containerHeight = containerRef.current.offsetHeight;
+      const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
+      const scrollToPosition = taskOffsetTop - containerHeight / 4;
+
+      containerRef.current.scrollTo({
+        top: scrollToPosition,
+        behavior: 'smooth',
+      });
+    }
+  }, [tasks]);
+
   useImperativeHandle(ref, () => ({
     update,
     scrollToFirstUncompletedTask: () => {

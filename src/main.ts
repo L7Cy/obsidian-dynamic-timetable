@@ -124,14 +124,14 @@ export default class DynamicTimetable extends Plugin {
   }
 
   async initTimetableView() {
-    const taskManager = taskFunctions(this);
-    const newTasks = await taskManager.initializeTasks();
-    this.tasks = newTasks;
     if (!this.isTimetableOpen()) {
       this.openTimetable();
     } else {
       this.updateOpenTimetableViews();
     }
+    const taskManager = taskFunctions(this);
+    const newTasks = await taskManager.initializeTasks();
+    this.tasks = newTasks;
   }
 
   async updateOpenTimetableViews() {

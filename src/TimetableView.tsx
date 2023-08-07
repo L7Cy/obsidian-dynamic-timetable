@@ -32,7 +32,7 @@ export class TimetableView extends ItemView {
     this.root = createRoot(this.containerEl);
     this.root.render(
       <TimetableViewComponent
-        ref={this.plugin.timetableViewComponentRef}
+        ref={this.componentRef}
         plugin={this.plugin}
         commandsManager={this.commandsManager}
       />
