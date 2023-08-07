@@ -12,6 +12,7 @@ import ProgressBar from './ProgressBar';
 import { CommandsManager } from './Commands';
 import BufferTimeRow from './BufferTimeRow';
 import TaskRow from './TaskRow';
+import { MarkdownView } from 'obsidian';
 
 export type TimetableViewComponentRef = {
   update: () => Promise<void>;
@@ -67,6 +68,10 @@ const TimetableViewComponent = forwardRef<
 
   const performScroll = () => {
     if (firstUncompletedTaskRef.current && containerRef.current) {
+      const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+      if (activeView?.file === plugin.targetFile) {
+        return;
+      }
       const containerHeight = containerRef.current.offsetHeight;
       const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
       const scrollToPosition = taskOffsetTop - containerHeight / 4;
