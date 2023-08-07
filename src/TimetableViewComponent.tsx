@@ -65,6 +65,19 @@ const TimetableViewComponent = forwardRef<
     ? tasks
     : tasks.filter((task) => !task.isCompleted);
 
+  const performScroll = () => {
+    if (firstUncompletedTaskRef.current && containerRef.current) {
+      const containerHeight = containerRef.current.offsetHeight;
+      const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
+      const scrollToPosition = taskOffsetTop - containerHeight / 4;
+
+      containerRef.current.scrollTo({
+        top: scrollToPosition,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   useEffect(() => {
     const onFileModify = async (file: any) => {
       if (file === plugin.targetFile) {
@@ -97,32 +110,12 @@ const TimetableViewComponent = forwardRef<
   }, [containerRef.current, tasks]);
 
   useEffect(() => {
-    if (firstUncompletedTaskRef.current && containerRef.current) {
-      const containerHeight = containerRef.current.offsetHeight;
-      const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
-      const scrollToPosition = taskOffsetTop - containerHeight / 4;
-
-      containerRef.current.scrollTo({
-        top: scrollToPosition,
-        behavior: 'smooth',
-      });
-    }
+    performScroll();
   }, [tasks]);
 
   useImperativeHandle(ref, () => ({
     update,
-    scrollToFirstUncompletedTask: () => {
-      if (firstUncompletedTaskRef.current && containerRef.current) {
-        const containerHeight = containerRef.current.offsetHeight;
-        const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
-        const scrollToPosition = taskOffsetTop - containerHeight / 4;
-
-        containerRef.current.scrollTo({
-          top: scrollToPosition,
-          behavior: 'smooth',
-        });
-      }
-    },
+    scrollToFirstUncompletedTask: performScroll,
   }));
 
   return (
