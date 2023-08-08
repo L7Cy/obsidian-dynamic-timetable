@@ -31,11 +31,17 @@ const TaskRow: React.FC<TaskRowProps> = ({
       ref={task.isCompleted ? null : firstUncompletedTaskRef}
       className={`${bufferClass} ${task.isCompleted ? 'dt-completed' : ''}`}>
       <td>{task.task}</td>
-      {plugin.settings.showEstimate && <td>{task.estimate}</td>}
-      {plugin.settings.showStartTime && (
-        <td>{task.startTime ? formatDateToTime(task.startTime) : ''}</td>
+      {plugin.settings.showEstimate && (
+        <td style={{ textAlign: 'center' }}>{task.estimate}</td>
       )}
-      <td>{task.endTime ? formatDateToTime(task.endTime) : ''}</td>
+      {plugin.settings.showStartTime && (
+        <td style={{ textAlign: 'center' }}>
+          {task.startTime ? formatDateToTime(task.startTime) : ''}
+        </td>
+      )}
+      <td style={{ textAlign: 'center' }}>
+        {task.endTime ? formatDateToTime(task.endTime) : ''}
+      </td>
     </tr>
   );
 };
