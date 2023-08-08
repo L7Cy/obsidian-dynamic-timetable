@@ -74,7 +74,7 @@ const TimetableViewComponent = forwardRef<
       }
       const containerHeight = containerRef.current.offsetHeight;
       const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
-      const scrollToPosition = taskOffsetTop - containerHeight / 4;
+      const scrollToPosition = taskOffsetTop - containerHeight / 5;
 
       containerRef.current.scrollTo({
         top: scrollToPosition,
