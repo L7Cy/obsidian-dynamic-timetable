@@ -45,7 +45,9 @@ export class TaskParser {
       .map((line) => line.trim())
       .reduce((acc: Task[], task) => {
         if (this.isDateDelimiterLine(task)) {
-          dateDelimiterFound = true;
+          if (firstUncompletedTaskFound) {
+            dateDelimiterFound = true;
+          }
           return acc;
         }
 
