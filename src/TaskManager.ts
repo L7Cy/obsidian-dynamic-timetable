@@ -139,14 +139,17 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
 
     let content = await plugin.app.vault.cachedRead(plugin.targetFile);
-    let elapsedTime = getElapsedTime(content);
+    const elapsedTime = getElapsedTime(content);
     const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
     content = updateTaskInContent(content, taskUpdate);
+    // This prevents the toggled contents in the markdown from being unintentionally expanded.
+    await plugin.app.vault.modify(plugin.targetFile, content);
 
     const now = new Date();
+    // Re-read the file and update the start time.
+    content = await plugin.app.vault.cachedRead(plugin.targetFile);
     content = updateStartTimeInYAML(content, now);
-
     await plugin.app.vault.modify(plugin.targetFile, content);
   };
 
