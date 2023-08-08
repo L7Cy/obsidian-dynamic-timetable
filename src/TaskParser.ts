@@ -62,7 +62,10 @@ export class TaskParser {
           return acc;
         }
 
-        const isCompleted = task.startsWith('- [x]');
+        const isCompleted =
+          task.startsWith('- [x]') ||
+          task.startsWith('+ [x]') ||
+          task.startsWith('* [x]');
         const taskName = this.parseTaskName(task);
 
         if (dateDelimiterFound) {
