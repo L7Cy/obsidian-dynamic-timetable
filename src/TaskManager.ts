@@ -12,16 +12,6 @@ type TaskUpdate = {
 };
 
 export const taskFunctions = (plugin: DynamicTimetable) => {
-  const getYamlStartTime = (content: string): Date | null => {
-    const match = content.match(
-      /^startTime: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/m
-    );
-    if (match) {
-      return new Date(match[1]);
-    }
-    return null;
-  };
-
   const formatTime = (date: Date): string => {
     let hours = date.getHours();
     let minutes = date.getMinutes();
@@ -69,8 +59,8 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
   };
 
-  const getElapsedTime = (content: string) => {
-    const startTime = getYamlStartTime(content);
+  const getElapsedTime = (task: Task) => {
+    const startTime = task.previousTaskEndTime;
     if (!startTime) return 0;
     const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
     return Math.max(0, Math.floor(elapsedTimeInMinutes));
@@ -117,8 +107,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
     const content = await plugin.app.vault.cachedRead(plugin.targetFile);
     const taskParser = TaskParser.fromSettings(plugin.settings);
-    const yamlStartTime = getYamlStartTime(content);
-    let tasks: Task[] = taskParser.filterAndParseTasks(content, yamlStartTime);
+    let tasks: Task[] = taskParser.filterAndParseTasks(content);
 
     let previousTaskEndTime = null;
     for (let task of tasks) {
@@ -128,7 +117,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 
     if (tasks.length > 0) {
       tasks[0].startTime =
-        yamlStartTime || new Date(plugin.targetFile.stat.mtime);
+        tasks[0].startTime || new Date(plugin.targetFile.stat.mtime);
     }
     return tasks;
   };
@@ -139,7 +128,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
 
     let content = await plugin.app.vault.cachedRead(plugin.targetFile);
-    const elapsedTime = getElapsedTime(content);
+    const elapsedTime = getElapsedTime(task);
     const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
     content = updateTaskInContent(content, taskUpdate);
@@ -161,8 +150,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     if (!plugin.targetFile) {
       return;
     }
-    let content = await plugin.app.vault.cachedRead(plugin.targetFile);
-    let elapsedTime = getElapsedTime(content);
+    let elapsedTime = getElapsedTime(task);
     let remainingTime = 0;
     if (task.estimate !== null) {
       remainingTime = Math.max(
@@ -186,6 +174,5 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     updateTask,
     updateTaskInContent,
     formatTime,
-    getYamlStartTime,
   };
 };

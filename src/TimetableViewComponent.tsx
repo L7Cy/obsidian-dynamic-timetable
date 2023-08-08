@@ -48,17 +48,7 @@ const TimetableViewComponent = forwardRef<
 
   const update = async () => {
     if (!plugin.targetFile) return;
-    const content = await plugin.app.vault.cachedRead(plugin.targetFile);
     const newTasks = await taskManager.initializeTasks();
-
-    const yamlStartTime = taskManager.getYamlStartTime(content);
-    if (yamlStartTime) {
-      const topUncompletedTask = newTasks.find((task) => !task.isCompleted);
-      if (topUncompletedTask) {
-        topUncompletedTask.startTime = yamlStartTime;
-      }
-    }
-
     setTasks(newTasks);
   };
 
