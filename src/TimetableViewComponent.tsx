@@ -47,7 +47,6 @@ const TimetableViewComponent = forwardRef<
   };
 
   const update = async () => {
-    if (!plugin.targetFile) return;
     const newTasks = await taskManager.initializeTasks();
     setTasks(newTasks);
   };
@@ -83,7 +82,7 @@ const TimetableViewComponent = forwardRef<
     plugin.registerEvent(unregisterEvent);
     update();
     return () => plugin.app.vault.off('modify', onFileModify);
-  }, [plugin]);
+  }, [plugin, plugin.targetFile]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {

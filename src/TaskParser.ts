@@ -36,7 +36,6 @@ export class TaskParser {
     let firstUncompletedTaskFound = false;
     let nextDay = 0;
     let dateDelimiterFound = false;
-    let lastCompletedTaskEndTime: Date | null = null;
 
     const yamlStartTime = this.getYamlStartTime(content);
     const tasks = content
@@ -77,7 +76,7 @@ export class TaskParser {
         let startTime = this.parseStartTime(task, nextDay);
 
         if (!isCompleted && !firstUncompletedTaskFound) {
-          startTime = lastCompletedTaskEndTime || yamlStartTime;
+          startTime = previousEndTime || yamlStartTime;
           firstUncompletedTaskFound = true;
         } else if (!startTime && previousEndTime) {
           startTime = previousEndTime;
@@ -88,10 +87,6 @@ export class TaskParser {
           endTime = new Date(startTime);
           endTime.setMinutes(endTime.getMinutes() + Number(estimate));
           previousEndTime = endTime;
-        }
-
-        if (isCompleted) {
-          lastCompletedTaskEndTime = endTime;
         }
 
         if (estimate) {
@@ -192,11 +187,12 @@ export class TaskParser {
   }
 
   public getYamlStartTime(content: string): Date | null {
-    const match = content.match(
-      /^startTime: (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/m
-    );
+    const match = content.match(/^startTime: (\d{2}:\d{2}:\d{2})/m);
     if (match) {
-      return new Date(match[1]);
+      const [hours, minutes, seconds] = match[1].split(':').map(Number);
+      const date = new Date();
+      date.setHours(hours, minutes, seconds);
+      return date;
     }
     return null;
   }
