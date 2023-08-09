@@ -148,7 +148,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     if (task.estimate !== null) {
       remainingTime = Math.max(
         0,
-        Math.floor(parseFloat(task.estimate) - elapsedTime)
+        Math.ceil(parseFloat(task.estimate) - elapsedTime)
       );
     }
 
