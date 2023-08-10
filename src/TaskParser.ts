@@ -6,6 +6,7 @@ export interface Task {
   estimate: string | null;
   endTime: Date | null;
   isCompleted: boolean;
+  originalStartTime: boolean;
 }
 
 export class TaskParser {
@@ -74,6 +75,7 @@ export class TaskParser {
         const estimate = this.parseEstimate(task);
 
         let startTime = this.parseStartTime(task, nextDay);
+        const originalStartTime = Boolean(startTime);
 
         if (!isCompleted && !firstUncompletedTaskFound) {
           startTime = previousEndTime || yamlStartTime;
@@ -96,6 +98,7 @@ export class TaskParser {
             estimate: estimate,
             endTime: endTime,
             isCompleted: isCompleted,
+            originalStartTime: originalStartTime,
           });
         }
 

@@ -22,8 +22,15 @@ const TaskRow: React.FC<TaskRowProps> = ({
   firstUncompletedTaskRef,
 }) => {
   let bufferClass = '';
-  if (bufferTime && bufferTime !== null && !task.isCompleted) {
-    bufferClass = bufferTime < 0 ? 'late' : 'on-time';
+  if (
+    task.originalStartTime &&
+    bufferTime !== null &&
+    bufferTime >= 0 &&
+    !task.isCompleted
+  ) {
+    bufferClass = 'on-time';
+  } else if (bufferTime !== null && bufferTime < 0 && !task.isCompleted) {
+    bufferClass = 'late';
   }
 
   return (
