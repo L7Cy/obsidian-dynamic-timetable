@@ -41,7 +41,7 @@ export class CommandsManager {
       (task) => !task.isCompleted
     );
     if (firstUncompletedTask) {
-      taskManager.interruptTask(firstUncompletedTask);
+      taskManager.interruptTask();
       this.plugin.timetableViewComponentRef.current?.scrollToFirstUncompletedTask();
     }
   }

@@ -138,25 +138,25 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     await updateTask(task, undefined);
   };
 
-  const interruptTask = async (task: Task) => {
+  const interruptTask = async () => {
     if (!plugin.targetFile) {
       return;
     }
     const content = await plugin.app.vault.cachedRead(plugin.targetFile);
+    const taskParser = TaskParser.fromSettings(plugin.settings);
+    let tasks: Task[] = taskParser.filterAndParseTasks(content);
     let elapsedTime = getElapsedTime(content);
     let remainingTime = 0;
-    if (task.estimate !== null) {
+    const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
+    if (!firstUncompletedTask) return;
+    if (firstUncompletedTask?.estimate) {
       remainingTime = Math.max(
         0,
-        Math.ceil(parseFloat(task.estimate) - elapsedTime)
+        Math.ceil(parseFloat(firstUncompletedTask.estimate) - elapsedTime)
       );
     }
 
-    if (remainingTime <= 0) {
-      remainingTime = 0;
-    }
-
-    await updateTask(task, remainingTime);
+    await updateTask(firstUncompletedTask, remainingTime);
   };
 
   return {
