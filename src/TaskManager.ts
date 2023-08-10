@@ -16,7 +16,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     let hours = date.getHours();
     let minutes = date.getMinutes();
     if (minutes === 0) {
-      return `${hours.toString().padStart(2, '0')}00`;
+      return `${hours.toString().padStart(2, '0')}:00`;
     }
     return `${hours.toString().padStart(2, '0')}:${minutes
       .toString()
