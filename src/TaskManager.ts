@@ -54,7 +54,10 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
   const getElapsedTime = (task: Task) => {
     const startTime = task.previousTaskEndTime;
     if (!startTime) return 0;
-    const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+    let elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
+    if (elapsedTimeInMinutes < 0) {
+      elapsedTimeInMinutes += 24 * 60;
+    }
     return Math.max(0, Math.floor(elapsedTimeInMinutes));
   };
 

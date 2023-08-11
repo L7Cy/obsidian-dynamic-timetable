@@ -92,9 +92,12 @@ const TimetableViewComponent = forwardRef<
         topUncompletedTask.startTime &&
         topUncompletedTask.estimate
       ) {
-        const duration =
+        let duration =
           new Date().getTime() - topUncompletedTask.startTime.getTime();
         const estimate = parseInt(topUncompletedTask.estimate) * 60 * 1000;
+        if (duration < 0) {
+          duration += 24 * 60 * 60;
+        }
         setProgressDuration(duration);
         setProgressEstimate(estimate);
       }
