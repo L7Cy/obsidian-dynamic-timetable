@@ -103,13 +103,13 @@ export default class DynamicTimetable extends Plugin {
 
     this.addCommand({
       id: 'complete-task',
-      name: 'Complete Current Task',
+      name: 'Complete Task',
       callback: () => this.commandsManager.completeTask(),
     });
 
     this.addCommand({
       id: 'interrupt-task',
-      name: 'Interrupt Current Task',
+      name: 'Interrupt Task',
       callback: () => this.commandsManager.interruptTask(),
     });
   }
