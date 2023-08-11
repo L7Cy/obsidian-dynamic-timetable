@@ -51,9 +51,8 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
   };
 
-  const getElapsedTime = (content: string) => {
-    const taskParser = TaskParser.fromSettings(plugin.settings);
-    const startTime = taskParser.getYamlStartTime(content);
+  const getElapsedTime = (task: Task) => {
+    const startTime = task.previousTaskEndTime;
     if (!startTime) return 0;
     const elapsedTimeInMinutes = (Date.now() - startTime.getTime()) / 60000;
     return Math.max(0, Math.floor(elapsedTimeInMinutes));
@@ -61,7 +60,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 
   const updateTaskInContent = (
     content: string,
-    { elapsedTime, remainingTime }: TaskUpdate
+    { task, elapsedTime, remainingTime }: TaskUpdate
   ): string => {
     const taskRegex = new RegExp(
       `^- \\[ \\] (.+?)(\\s*${plugin.settings.taskEstimateDelimiter.replace(
@@ -76,7 +75,9 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
       const taskMatch = lines[i].match(taskRegex);
       if (taskMatch) {
         const originalTaskName = taskMatch[1];
-        const actualStartTime = new Date(Date.now() - elapsedTime * 60 * 1000);
+        const actualStartTime =
+          task.previousTaskEndTime ||
+          new Date(Date.now() - elapsedTime * 60 * 1000);
 
         lines[i] = `- [x] ${originalTaskName} ${
           plugin.settings.taskEstimateDelimiter
@@ -120,7 +121,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
 
     let content = await plugin.app.vault.cachedRead(plugin.targetFile);
-    const elapsedTime = getElapsedTime(content);
+    const elapsedTime = getElapsedTime(task);
     const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
     content = updateTaskInContent(content, taskUpdate);
@@ -138,14 +139,14 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     await updateTask(task, undefined);
   };
 
-  const interruptTask = async () => {
+  const interruptTask = async (task: Task) => {
     if (!plugin.targetFile) {
       return;
     }
     const content = await plugin.app.vault.cachedRead(plugin.targetFile);
     const taskParser = TaskParser.fromSettings(plugin.settings);
     let tasks: Task[] = taskParser.filterAndParseTasks(content);
-    let elapsedTime = getElapsedTime(content);
+    let elapsedTime = getElapsedTime(task);
     let remainingTime = 0;
     const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
     if (!firstUncompletedTask) return;
