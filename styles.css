@@ -4,11 +4,11 @@
 }
 
 .late {
-  background-color: rgba(255, 0, 0, 0.3);
+  color: rgba(200, 50, 50, 1);
 }
 
 .on-time {
-  background-color: rgba(0, 255, 0, 0.3);
+  color: rgba(50, 150, 50, 1);
 }
 
 .dt-completed {
