@@ -7,6 +7,7 @@ type TaskRowProps = {
   plugin: DynamicTimetable;
   bufferTime: number | null;
   firstUncompletedTaskRef: React.MutableRefObject<HTMLTableRowElement | null> | null;
+  categoryBackgroundColors: Record<string, string>;
 };
 
 const formatDateToTime = (date: Date) => {
@@ -15,11 +16,16 @@ const formatDateToTime = (date: Date) => {
   return `${hours}:${minutes}`;
 };
 
+const createCategoryClasses = (categories: string[]): string => {
+  return categories.map((category) => `dt-category-${category}`).join(' ');
+};
+
 const TaskRow: React.FC<TaskRowProps> = ({
   task,
   plugin,
   bufferTime,
   firstUncompletedTaskRef,
+  categoryBackgroundColors,
 }) => {
   let bufferClass = '';
   if (
@@ -33,10 +39,18 @@ const TaskRow: React.FC<TaskRowProps> = ({
     bufferClass = 'late';
   }
 
+  const categoryClasses = createCategoryClasses(task.categories);
+  const style = {
+    backgroundColor: categoryBackgroundColors[task.categories[0]],
+  };
+
   return (
     <tr
       ref={task.isCompleted ? null : firstUncompletedTaskRef}
-      className={`${bufferClass} ${task.isCompleted ? 'dt-completed' : ''}`}>
+      className={`${bufferClass} ${
+        task.isCompleted ? 'dt-completed' : ''
+      } ${categoryClasses}`}
+      style={style}>
       <td>{task.task}</td>
       {plugin.settings.showEstimate && (
         <td style={{ textAlign: 'center' }}>{task.estimate}</td>

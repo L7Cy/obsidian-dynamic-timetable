@@ -19,6 +19,18 @@ export type TimetableViewComponentRef = {
   scrollToFirstUncompletedTask: () => void;
 };
 
+const isDarkMode = () => {
+  return document.body.classList.contains('theme-dark');
+};
+
+const getRandomLightColor = (darkMode: boolean) => {
+  console.log(darkMode);
+  const hue = Math.floor(Math.random() * 360);
+  const saturation = darkMode ? 30 : 50;
+  const lightness = darkMode ? 20 : 80;
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+};
+
 const TimetableViewComponent = forwardRef<
   TimetableViewComponentRef,
   {
@@ -45,6 +57,10 @@ const TimetableViewComponent = forwardRef<
     }
     return null;
   };
+
+  const [categoryBackgroundColors, setCategoryBackgroundColors] = useState<
+    Record<string, string>
+  >({});
 
   const update = async () => {
     const newTasks = await taskManager.initializeTasks();
@@ -110,6 +126,27 @@ const TimetableViewComponent = forwardRef<
     performScroll();
   }, [tasks]);
 
+  useEffect(() => {
+    const darkMode = isDarkMode();
+    const newBackgroundColors = { ...categoryBackgroundColors };
+
+    tasks.forEach((task) => {
+      task.categories.forEach((category) => {
+        if (!newBackgroundColors[category]) {
+          const className = `dt-category-${category}`;
+          const color = getRandomLightColor(darkMode);
+          newBackgroundColors[category] = color;
+          document.documentElement.style.setProperty(
+            `--${className}-bg`,
+            color
+          );
+        }
+      });
+    });
+
+    setCategoryBackgroundColors(newBackgroundColors);
+  }, [tasks]);
+
   useImperativeHandle(ref, () => ({
     update,
     scrollToFirstUncompletedTask: performScroll,
@@ -171,6 +208,7 @@ const TimetableViewComponent = forwardRef<
                 task={task}
                 plugin={plugin}
                 bufferTime={bufferTime}
+                categoryBackgroundColors={categoryBackgroundColors}
                 firstUncompletedTaskRef={
                   task === firstUncompletedTask ? firstUncompletedTaskRef : null
                 }
