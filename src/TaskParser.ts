@@ -7,6 +7,7 @@ export interface Task {
   endTime: Date | null;
   isCompleted: boolean;
   originalStartTime: boolean;
+  categories: string[];
 }
 
 export class TaskParser {
@@ -73,6 +74,7 @@ export class TaskParser {
         }
 
         const estimate = this.parseEstimate(task);
+        const categories = this.parseCategories(task);
 
         let startTime = this.parseStartTime(task, nextDay);
         const originalStartTime = Boolean(startTime);
@@ -99,6 +101,7 @@ export class TaskParser {
             endTime: endTime,
             isCompleted: isCompleted,
             originalStartTime: originalStartTime,
+            categories: categories,
           });
         }
 
@@ -187,6 +190,16 @@ export class TaskParser {
     const regex = new RegExp(`\\${this.separator}\\s*(\\d+)\\s*`);
     const match = task.match(regex);
     return match ? match[1] : null;
+  }
+
+  private parseCategories(taskName: string): string[] {
+    const tagRegex = /#(\w+)/g;
+    const categories = [];
+    let match;
+    while ((match = tagRegex.exec(taskName)) !== null) {
+      categories.push(match[1]);
+    }
+    return categories;
   }
 
   public getYamlStartTime(content: string): Date | null {
