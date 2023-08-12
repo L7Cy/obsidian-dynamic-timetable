@@ -22,6 +22,8 @@ export interface DynamicTimetableSettings {
   dateDelimiter: string;
   enableOverdueNotice: boolean;
   showCompletedTasks: boolean;
+  applyBackgroundColorByCategory: boolean;
+  showCategoryNamesInTask: boolean;
   [key: string]: string | boolean | string[] | number | null | undefined;
 }
 
@@ -55,6 +57,8 @@ export default class DynamicTimetable extends Plugin {
     enableOverdueNotice: true,
     headerNames: ['Tasks', 'Estimate', 'Start', 'End'],
     showCompletedTasks: true,
+    applyBackgroundColorByCategory: true,
+    showCategoryNamesInTask: false,
   };
 
   onunload(): void {

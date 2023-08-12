@@ -22,11 +22,21 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       'Show Start Time in Task Name',
       'showStartTimeInTaskName'
     );
+    this.createToggleSetting(
+      'Show Category Names in Task',
+      'showCategoryNamesInTask',
+      'If enabled, displays category names within the task name.'
+    );
     this.createToggleSetting('Show Buffer Time Rows', 'showBufferTime');
     this.createToggleSetting(
       'Show Completed Tasks',
       'showCompletedTasks',
       'If enabled, displays completed tasks in the timetable.'
+    );
+    this.createToggleSetting(
+      'Apply Background Color by Category (tag)',
+      'applyBackgroundColorByCategory',
+      'If enabled, applies background color based on the first category of each task.'
     );
     this.createToggleSetting(
       'Show Progress Bar',

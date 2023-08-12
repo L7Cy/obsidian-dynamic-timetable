@@ -18,7 +18,8 @@ export class TaskParser {
     private startTimeDelimiter: string,
     dateDelimiter: string,
     private showStartTimeInTaskName: boolean,
-    private showEstimateInTaskName: boolean
+    private showEstimateInTaskName: boolean,
+    private showCategoryNamesInTask: boolean
   ) {
     this.dateDelimiter = dateDelimiter ? new RegExp(dateDelimiter) : /(?!x)x/;
   }
@@ -29,7 +30,8 @@ export class TaskParser {
       settings.startTimeDelimiter,
       settings.dateDelimiter,
       settings.showStartTimeInTaskName,
-      settings.showEstimateInTaskName
+      settings.showEstimateInTaskName,
+      settings.showCategoryNamesInTask
     );
   }
 
@@ -130,6 +132,10 @@ export class TaskParser {
     const startTimeRegex = new RegExp(
       `\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:?\\d{2})`
     );
+
+    if (!this.showCategoryNamesInTask) {
+      taskName = taskName.replace(/#\w+/g, '').trim();
+    }
 
     if (this.showStartTimeInTaskName) {
       taskName = taskName.replace(

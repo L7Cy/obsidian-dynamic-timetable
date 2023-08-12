@@ -19,16 +19,11 @@ export type TimetableViewComponentRef = {
   scrollToFirstUncompletedTask: () => void;
 };
 
-const isDarkMode = () => {
-  return document.body.classList.contains('theme-dark');
-};
-
-const getRandomLightColor = (darkMode: boolean) => {
-  console.log(darkMode);
+const getRandomLightColor = (alpha: number = 0.3) => {
   const hue = Math.floor(Math.random() * 360);
-  const saturation = darkMode ? 30 : 50;
-  const lightness = darkMode ? 20 : 80;
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  const saturation = 80;
+  const lightness = 80;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
 };
 
 const TimetableViewComponent = forwardRef<
@@ -127,14 +122,13 @@ const TimetableViewComponent = forwardRef<
   }, [tasks]);
 
   useEffect(() => {
-    const darkMode = isDarkMode();
     const newBackgroundColors = { ...categoryBackgroundColors };
 
     tasks.forEach((task) => {
       task.categories.forEach((category) => {
         if (!newBackgroundColors[category]) {
           const className = `dt-category-${category}`;
-          const color = getRandomLightColor(darkMode);
+          const color = getRandomLightColor();
           newBackgroundColors[category] = color;
           document.documentElement.style.setProperty(
             `--${className}-bg`,
