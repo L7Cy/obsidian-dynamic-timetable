@@ -25,6 +25,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   plugin,
   bufferTime,
   firstUncompletedTaskRef,
+  categoryBackgroundColors,
 }) => {
   let bufferClass = '';
   if (
@@ -41,7 +42,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   const categoryClasses = createCategoryClasses(task.categories);
   const style = plugin.settings.applyBackgroundColorByCategory
     ? {
-        backgroundColor: `var(--dt-category-${task.categories[0]}-bg)`,
+        backgroundColor: categoryBackgroundColors[task.categories[0]] || '',
       }
     : {};
 

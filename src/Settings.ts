@@ -34,11 +34,6 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       'If enabled, displays completed tasks in the timetable.'
     );
     this.createToggleSetting(
-      'Apply Background Color by Category (tag)',
-      'applyBackgroundColorByCategory',
-      'If enabled, applies background color based on the first category of each task.'
-    );
-    this.createToggleSetting(
       'Show Progress Bar',
       'showProgressBar',
       'If enabled, displays a progress bar based on the top task estimate.'
@@ -73,6 +68,14 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       ? this.plugin.settings.headerNames.join(', ')
       : '';
     this.createHeaderNamesSetting(headerNames);
+    this.createToggleSetting(
+      'Apply Background Color by Category (tag)',
+      'applyBackgroundColorByCategory',
+      'If enabled, applies background color based on the first category of each task.'
+    );
+    if (this.plugin.settings.applyBackgroundColorByCategory) {
+      this.createCategoryColorsSetting();
+    }
     this.createToggleSetting('Enable Overdue Notice', 'enableOverdueNotice');
   }
 
@@ -129,5 +132,72 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
         });
         return el;
       });
+  }
+
+  createCategoryColorsSetting() {
+    const categoryColorsSetting = new Setting(this.containerEl)
+      .setName('Category Colors')
+      .setDesc('Set the color for each category.');
+
+    const categoryColorsContainer =
+      categoryColorsSetting.settingEl.createEl('div');
+    const categoryColors = this.plugin.settings.categoryColors || [];
+
+    new Setting(categoryColorsContainer)
+      .setName('Transparency')
+      .addSlider((slider) => {
+        slider
+          .setLimits(0, 1, 0.1)
+          .setValue(this.plugin.settings.categoryTransparency)
+          .onChange(async (value) => {
+            await this.plugin.updateSetting('categoryTransparency', value);
+          });
+
+        slider.sliderEl.style.width = 'auto';
+      });
+
+    categoryColors.forEach((item, index) => {
+      new Setting(categoryColorsContainer)
+        .setName(`Category ${index + 1}`)
+        .addText((text) => {
+          const el = text
+            .setPlaceholder('Category')
+            .setValue(item.category || '');
+
+          el.inputEl.addEventListener('blur', async (event) => {
+            const value = (event.target as HTMLInputElement).value;
+            this.plugin.settings.categoryColors[index].category = value;
+            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.updateOpenTimetableViews();
+          });
+
+          return el;
+        })
+        .addColorPicker((colorPicker) => {
+          colorPicker.setValue(item.color).onChange(async (value) => {
+            this.plugin.settings.categoryColors[index].color = value;
+            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.updateOpenTimetableViews();
+          });
+        })
+        .addButton((button) => {
+          button.setButtonText('Delete').onClick(async () => {
+            this.plugin.settings.categoryColors.splice(index, 1);
+            await this.plugin.saveData(this.plugin.settings);
+            this.display();
+          });
+        });
+    });
+
+    new Setting(categoryColorsContainer).addButton((button) => {
+      button.setButtonText('Add Category Color').onClick(async () => {
+        this.plugin.settings.categoryColors.push({
+          category: '',
+          color: '#ffffff',
+        });
+        await this.plugin.saveData(this.plugin.settings);
+        this.display();
+      });
+    });
   }
 }

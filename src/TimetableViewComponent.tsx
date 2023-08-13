@@ -19,13 +19,6 @@ export type TimetableViewComponentRef = {
   scrollToFirstUncompletedTask: () => void;
 };
 
-const getRandomLightColor = (alpha: number = 0.3) => {
-  const hue = Math.floor(Math.random() * 360);
-  const saturation = 80;
-  const lightness = 80;
-  return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
-};
-
 const TimetableViewComponent = forwardRef<
   TimetableViewComponentRef,
   {
@@ -38,6 +31,7 @@ const TimetableViewComponent = forwardRef<
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progressDuration, setProgressDuration] = useState(0);
   const [progressEstimate, setProgressEstimate] = useState(0);
+  const [isBackgroundColorSet, setIsBackgroundColorSet] = useState(false);
   const taskManager = taskFunctions(plugin);
   const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
 
@@ -83,6 +77,46 @@ const TimetableViewComponent = forwardRef<
     }
   };
 
+  const getRandomLightColor = () => {
+    const hue = Math.floor(Math.random() * 360);
+    const saturation = 80;
+    const lightness = 80;
+    const alpha = plugin.settings.categoryTransparency;
+    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+  };
+
+  const updateBackgroundColors = () => {
+    const newBackgroundColors = { ...categoryBackgroundColors };
+
+    tasks.forEach((task) => {
+      task.categories.forEach((category) => {
+        const configuredColor = plugin.settings.categoryColors?.find(
+          (c) => c.category === category
+        )?.color;
+
+        const className = `dt-category-${category}`;
+        let color;
+
+        if (configuredColor) {
+          const hex = configuredColor.replace('#', '');
+          const r = parseInt(hex.substring(0, 2), 16);
+          const g = parseInt(hex.substring(2, 4), 16);
+          const b = parseInt(hex.substring(4, 6), 16);
+          const alpha = plugin.settings.categoryTransparency;
+          color = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        } else {
+          color = getRandomLightColor();
+        }
+
+        newBackgroundColors[category] = color;
+        document.documentElement.style.setProperty(`--${className}-bg`, color);
+        setIsBackgroundColorSet(true);
+      });
+    });
+
+    setCategoryBackgroundColors(newBackgroundColors);
+  };
+
   useEffect(() => {
     const onFileModify = async (file: any) => {
       if (file === plugin.targetFile) {
@@ -122,24 +156,17 @@ const TimetableViewComponent = forwardRef<
   }, [tasks]);
 
   useEffect(() => {
-    const newBackgroundColors = { ...categoryBackgroundColors };
-
-    tasks.forEach((task) => {
-      task.categories.forEach((category) => {
-        if (!newBackgroundColors[category]) {
-          const className = `dt-category-${category}`;
-          const color = getRandomLightColor();
-          newBackgroundColors[category] = color;
-          document.documentElement.style.setProperty(
-            `--${className}-bg`,
-            color
-          );
-        }
-      });
-    });
-
-    setCategoryBackgroundColors(newBackgroundColors);
+    if (!isBackgroundColorSet) {
+      updateBackgroundColors();
+    }
   }, [tasks]);
+
+  useEffect(() => {
+    updateBackgroundColors();
+  }, [
+    JSON.stringify(plugin.settings.categoryColors),
+    plugin.settings.categoryTransparency,
+  ]);
 
   useImperativeHandle(ref, () => ({
     update,

@@ -24,7 +24,16 @@ export interface DynamicTimetableSettings {
   showCompletedTasks: boolean;
   applyBackgroundColorByCategory: boolean;
   showCategoryNamesInTask: boolean;
-  [key: string]: string | boolean | string[] | number | null | undefined;
+  categoryColors: { category: string; color: string }[];
+  categoryTransparency: number;
+  [key: string]:
+    | string
+    | boolean
+    | string[]
+    | number
+    | null
+    | undefined
+    | { category: string; color: string }[];
 }
 
 declare module 'obsidian' {
@@ -59,6 +68,8 @@ export default class DynamicTimetable extends Plugin {
     showCompletedTasks: true,
     applyBackgroundColorByCategory: true,
     showCategoryNamesInTask: false,
+    categoryColors: [],
+    categoryTransparency: 0.3,
   };
 
   onunload(): void {
