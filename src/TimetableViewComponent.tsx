@@ -126,6 +126,7 @@ const TimetableViewComponent = forwardRef<
     const unregisterEvent = plugin.app.vault.on('modify', onFileModify);
     plugin.registerEvent(unregisterEvent);
     update();
+    updateBackgroundColors();
     return () => plugin.app.vault.off('modify', onFileModify);
   }, [plugin, plugin.targetFile]);
 
