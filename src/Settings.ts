@@ -135,9 +135,9 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
   }
 
   createCategoryColorsSetting() {
-    const categoryColorsSetting = new Setting(this.containerEl)
-      .setName('Category Colors')
-      .setDesc('Set the color for each category.');
+    const categoryColorsSetting = new Setting(this.containerEl).setName(
+      'Category Colors'
+    );
 
     const categoryColorsContainer =
       categoryColorsSetting.settingEl.createEl('div');
