@@ -16,7 +16,7 @@
 }
 
 .dt-buffer-time {
-  background-color: rgba(128, 128, 128, 0.3);
+  color: rgba(128, 128, 128, 1);
 }
 
 .dt-progress-bar {
