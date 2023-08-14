@@ -24,7 +24,7 @@ export class StatisticsView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Statistics';
+    return 'Timetable Stats';
   }
 
   async onOpen(): Promise<void> {
