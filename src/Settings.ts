@@ -193,7 +193,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       button.setButtonText('Add Category Color').onClick(async () => {
         this.plugin.settings.categoryColors.push({
           category: '',
-          color: '#ffffff',
+          color: '',
         });
         await this.plugin.saveData(this.plugin.settings);
         this.display();
