@@ -18,6 +18,7 @@ export class TimetableView extends ItemView {
     this.plugin = plugin;
     this.componentRef = React.createRef<TimetableViewComponentRef>();
     this.commandsManager = new CommandsManager(plugin);
+    this.icon = "table";
   }
 
   getViewType(): string {

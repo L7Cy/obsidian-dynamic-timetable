@@ -17,6 +17,7 @@ export class StatisticsView extends ItemView {
     super(leaf);
     this.plugin = plugin;
     this.componentRef = React.createRef();
+    this.icon = "bar-chart-horizontal";
   }
 
   getViewType(): string {
