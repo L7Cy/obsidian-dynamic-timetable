@@ -168,7 +168,8 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
             const value = (event.target as HTMLInputElement).value;
             this.plugin.settings.categoryColors[index].category = value;
             await this.plugin.saveData(this.plugin.settings);
-            await this.plugin.updateOpenTimetableViews();
+            await this.plugin.updateOpenViews('Timetable');
+            await this.plugin.updateOpenViews('Statistics');
           });
 
           return el;
@@ -177,7 +178,8 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
           colorPicker.setValue(item.color).onChange(async (value) => {
             this.plugin.settings.categoryColors[index].color = value;
             await this.plugin.saveData(this.plugin.settings);
-            await this.plugin.updateOpenTimetableViews();
+            await this.plugin.updateOpenViews('Timetable');
+            await this.plugin.updateOpenViews('Statistics');
           });
         })
         .addButton((button) => {

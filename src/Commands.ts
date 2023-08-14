@@ -14,7 +14,7 @@ export class CommandsManager {
     if (leaves.length == 0) {
       this.plugin.openTimetable();
     } else {
-      this.plugin.closeTimetable();
+      this.plugin.app.workspace.detachLeavesOfType('Timetable');
     }
   }
 
@@ -23,7 +23,7 @@ export class CommandsManager {
     if (leaves.length == 0) {
       this.plugin.openStatistics();
     } else {
-      this.plugin.closeStatistics();
+      this.plugin.app.workspace.detachLeavesOfType('Statistics');
     }
   }
 

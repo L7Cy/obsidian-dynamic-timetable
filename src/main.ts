@@ -44,6 +44,8 @@ declare module 'obsidian' {
   }
 }
 
+type ViewType = 'Timetable' | 'Statistics';
+
 export default class DynamicTimetable extends Plugin {
   settings: DynamicTimetableSettings;
   targetFile: TFile | null = null;
@@ -76,29 +78,28 @@ export default class DynamicTimetable extends Plugin {
   };
 
   onunload(): void {
-    this.closeTimetable();
+    this.app.workspace.detachLeavesOfType('Timetable');
+    this.app.workspace.detachLeavesOfType('Statistics');
   }
 
   async onload() {
     console.log('DynamicTimetable: onload');
+    await this.initSettings();
+    this.initCommands();
+    this.registerViews();
+    await this.layoutReadyHandler();
+  }
 
+  async initSettings() {
     this.settings = {
       ...DynamicTimetable.DEFAULT_SETTINGS,
       ...(await this.loadData()),
     };
     this.addSettingTab(new DynamicTimetableSettingTab(this.app, this));
-
     this.commandsManager = new CommandsManager(this);
-    this.initCommands();
-    this.registerView(
-      'Timetable',
-      (leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
-    );
-    this.registerView(
-      'Statistics',
-      (leaf: WorkspaceLeaf) => new StatisticsView(leaf, this)
-    );
+  }
 
+  async layoutReadyHandler() {
     if (this.app.workspace.layoutReady) {
       this.initTimetableView();
     } else {
@@ -108,6 +109,17 @@ export default class DynamicTimetable extends Plugin {
     }
     this.timetableViewComponentRef =
       React.createRef<TimetableViewComponentRef>();
+  }
+
+  registerViews() {
+    this.registerView(
+      'Timetable',
+      (leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
+    );
+    this.registerView(
+      'Statistics',
+      (leaf: WorkspaceLeaf) => new StatisticsView(leaf, this)
+    );
   }
 
   initCommands(): void {
@@ -148,41 +160,39 @@ export default class DynamicTimetable extends Plugin {
   ): Promise<void> {
     this.settings[settingName] = newValue;
     await this.saveData(this.settings);
-    await this.updateOpenTimetableViews();
+    await this.updateOpenViews('Timetable');
   }
 
   async initTimetableView() {
     if (!this.isTimetableOpen()) {
       this.openTimetable();
     } else {
-      this.updateOpenTimetableViews();
+      this.updateOpenViews('Timetable');
     }
     if (!this.isStatisticsOpen()) {
       this.openStatistics();
     } else {
-      this.updateOpenStatisticsViews();
+      this.updateOpenViews('Statistics');
     }
     const taskManager = taskFunctions(this);
     const newTasks = await taskManager.initializeTasks();
     this.tasks = newTasks;
   }
 
-  async updateOpenTimetableViews() {
-    for (const leaf of this.app.workspace.getLeavesOfType('Timetable')) {
-      const view = leaf.view;
-      if (view instanceof TimetableView) {
-        this.checkTargetFile();
-        await view.update();
-      }
-    }
-  }
+  async updateOpenViews(viewType: ViewType) {
+    const viewTypeMap: Record<
+      ViewType,
+      typeof TimetableView | typeof StatisticsView
+    > = {
+      Timetable: TimetableView,
+      Statistics: StatisticsView,
+    };
 
-  async updateOpenStatisticsViews() {
-    for (const leaf of this.app.workspace.getLeavesOfType('Statistics')) {
+    for (const leaf of this.app.workspace.getLeavesOfType(viewType)) {
       const view = leaf.view;
-      if (view instanceof StatisticsView) {
+      if (view instanceof viewTypeMap[viewType]) {
         this.checkTargetFile();
-        await view.update();
+        await (view as any).update();
       }
     }
   }
@@ -207,14 +217,6 @@ export default class DynamicTimetable extends Plugin {
     const leaf = this.app.workspace.getRightLeaf(false);
     leaf.setViewState({ type: 'Statistics' });
     this.app.workspace.revealLeaf(leaf);
-  }
-
-  closeTimetable() {
-    this.app.workspace.detachLeavesOfType('Timetable');
-  }
-
-  closeStatistics() {
-    this.app.workspace.detachLeavesOfType('Statistics');
   }
 
   checkTargetFile() {
