@@ -34,6 +34,7 @@ const TimetableViewComponent = forwardRef<
   const [isBackgroundColorSet, setIsBackgroundColorSet] = useState(false);
   const taskManager = taskFunctions(plugin);
   const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
+  const allCategories = tasks.flatMap((task) => task.categories).join(',');
 
   const calculateBufferTime = (
     currentTaskEndTime: Date | null,
@@ -165,6 +166,7 @@ const TimetableViewComponent = forwardRef<
   useEffect(() => {
     updateBackgroundColors();
   }, [
+    allCategories,
     JSON.stringify(plugin.settings.categoryColors),
     plugin.settings.categoryTransparency,
   ]);
