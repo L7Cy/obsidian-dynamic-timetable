@@ -70,25 +70,29 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
       `^- \\[ \\] (.+?)(\\s*${plugin.settings.taskEstimateDelimiter.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
-      )}\\s*(\\d+\\.?\\d*)|\\s*@\\s*\\d{1,2}[:]?\\d{2})`,
+      )}\\s*(\\d+\\.?\\d*)?)?(\\s*@\\s*\\d{1,2}[:]?\\d{2})?(\\s*#.*)?$`,
       'm'
     );
 
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      const taskMatch = lines[i].match(taskRegex);
+      const line = lines[i];
+      const taskMatch = line.match(taskRegex);
       if (taskMatch) {
         const originalTaskName = taskMatch[1];
+        const tags = line.match(/#\w+/g)?.join(' ') || '';
         const actualStartTime = new Date(Date.now() - elapsedTime * 60 * 1000);
 
-        lines[i] = `- [x] ${originalTaskName} ${
+        lines[i] = `- [x] ${originalTaskName.replace(tags, '').trim()} ${
           plugin.settings.taskEstimateDelimiter
-        } ${elapsedTime.toFixed(0)} @ ${formatTime(actualStartTime)}`;
+        } ${elapsedTime.toFixed(0)} @ ${formatTime(actualStartTime)} ${tags}`;
 
         if (remainingTime !== undefined) {
-          const newTaskToAdd = `- [ ] ${originalTaskName} ${
+          const newTaskToAdd = `- [ ] ${originalTaskName
+            .replace(tags, '')
+            .trim()} ${
             plugin.settings.taskEstimateDelimiter
-          } ${remainingTime.toFixed(0)}`;
+          } ${remainingTime.toFixed(0)} ${tags}`;
           lines.splice(i + 1, 0, newTaskToAdd);
         }
         break;
