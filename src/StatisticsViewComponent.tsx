@@ -15,9 +15,10 @@ import {
   LinearScale,
   CategoryScale,
   BarElement,
+  Tooltip,
 } from 'chart.js';
 
-Chart.register(BarController, LinearScale, CategoryScale, BarElement);
+Chart.register(BarController, LinearScale, CategoryScale, BarElement, Tooltip);
 
 type Props = {
   plugin: DynamicTimetable;
@@ -113,7 +114,7 @@ export const StatisticsViewComponent = forwardRef((props: Props, ref) => {
   }));
 
   return (
-    <div>
+    <div style={{ width: '100%', height: '100%' }}>
       <Bar data={data} options={options} />
     </div>
   );
