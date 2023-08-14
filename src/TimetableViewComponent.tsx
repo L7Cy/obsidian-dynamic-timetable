@@ -31,10 +31,11 @@ const TimetableViewComponent = forwardRef<
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progressDuration, setProgressDuration] = useState(0);
   const [progressEstimate, setProgressEstimate] = useState(0);
-  const [isBackgroundColorSet, setIsBackgroundColorSet] = useState(false);
   const taskManager = taskFunctions(plugin);
   const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
-  const allCategories = tasks.flatMap((task) => task.categories).join(',');
+  const allCategories = Array.from(
+    new Set(tasks.flatMap((task) => task.categories).sort())
+  ).join(',');
 
   const calculateBufferTime = (
     currentTaskEndTime: Date | null,
@@ -87,16 +88,18 @@ const TimetableViewComponent = forwardRef<
   };
 
   const updateBackgroundColors = () => {
-    const newBackgroundColors = { ...categoryBackgroundColors };
+    const newBackgroundColors: Record<string, string> = {
+      ...categoryBackgroundColors,
+    };
 
     tasks.forEach((task) => {
       task.categories.forEach((category) => {
+        const className = `dt-category-${category}`;
+        let color;
+
         const configuredColor = plugin.settings.categoryColors?.find(
           (c) => c.category === category
         )?.color;
-
-        const className = `dt-category-${category}`;
-        let color;
 
         if (configuredColor) {
           const hex = configuredColor.replace('#', '');
@@ -105,13 +108,21 @@ const TimetableViewComponent = forwardRef<
           const b = parseInt(hex.substring(4, 6), 16);
           const alpha = plugin.settings.categoryTransparency;
           color = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        } else {
+        } else if (!newBackgroundColors[category]) {
           color = getRandomLightColor();
+        } else {
+          color = newBackgroundColors[category];
+          const match = color.match(
+            /hsla\((\d+), (\d+)%?, (\d+)%?, (\d+\.?\d*?)\)/
+          );
+          if (match) {
+            const alpha = plugin.settings.categoryTransparency;
+            color = `hsla(${match[1]}, ${match[2]}%, ${match[3]}%, ${alpha})`;
+          }
         }
 
         newBackgroundColors[category] = color;
         document.documentElement.style.setProperty(`--${className}-bg`, color);
-        setIsBackgroundColorSet(true);
       });
     });
 
@@ -155,12 +166,6 @@ const TimetableViewComponent = forwardRef<
 
   useEffect(() => {
     performScroll();
-  }, [tasks]);
-
-  useEffect(() => {
-    if (!isBackgroundColorSet) {
-      updateBackgroundColors();
-    }
   }, [tasks]);
 
   useEffect(() => {
