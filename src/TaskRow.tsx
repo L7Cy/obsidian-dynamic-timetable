@@ -40,9 +40,15 @@ const TaskRow: React.FC<TaskRowProps> = ({
   }
 
   const categoryClasses = createCategoryClasses(task.categories);
+  const originalBackgroundColor =
+    categoryBackgroundColors[task.categories[0]] || '';
+  const backgroundColor = task.isCompleted
+    ? originalBackgroundColor.replace(/,\s*([^,]+)\)/, ', 0.05)')
+    : originalBackgroundColor;
+
   const style = plugin.settings.applyBackgroundColorByCategory
     ? {
-        backgroundColor: categoryBackgroundColors[task.categories[0]] || '',
+        backgroundColor: backgroundColor,
       }
     : {};
 

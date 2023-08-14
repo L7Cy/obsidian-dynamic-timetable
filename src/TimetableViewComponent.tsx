@@ -13,6 +13,11 @@ import { CommandsManager } from './Commands';
 import BufferTimeRow from './BufferTimeRow';
 import TaskRow from './TaskRow';
 import { MarkdownView } from 'obsidian';
+import {
+  getHSLAColor,
+  getRGBAColor,
+  getRandomHSLAColor,
+} from './ColorUtils.ts';
 
 export type TimetableViewComponentRef = {
   update: () => Promise<void>;
@@ -33,9 +38,6 @@ const TimetableViewComponent = forwardRef<
   const [progressEstimate, setProgressEstimate] = useState(0);
   const taskManager = taskFunctions(plugin);
   const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
-  const allCategories = Array.from(
-    new Set(tasks.flatMap((task) => task.categories).sort())
-  ).join(',');
 
   const calculateBufferTime = (
     currentTaskEndTime: Date | null,
@@ -79,54 +81,36 @@ const TimetableViewComponent = forwardRef<
     }
   };
 
-  const getRandomLightColor = () => {
-    const hue = Math.floor(Math.random() * 360);
-    const saturation = 80;
-    const lightness = 80;
-    const alpha = plugin.settings.categoryTransparency;
-    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
-  };
-
   const updateBackgroundColors = () => {
-    const newBackgroundColors: Record<string, string> = {
-      ...categoryBackgroundColors,
-    };
+    const newBackgroundColors = { ...categoryBackgroundColors };
 
     tasks.forEach((task) => {
       task.categories.forEach((category) => {
         const className = `dt-category-${category}`;
         let color;
-
+        const alpha = plugin.settings.categoryTransparency;
         const configuredColor = plugin.settings.categoryColors?.find(
           (c) => c.category === category
         )?.color;
 
         if (configuredColor) {
-          const hex = configuredColor.replace('#', '');
-          const r = parseInt(hex.substring(0, 2), 16);
-          const g = parseInt(hex.substring(2, 4), 16);
-          const b = parseInt(hex.substring(4, 6), 16);
-          const alpha = plugin.settings.categoryTransparency;
-          color = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          color = getRGBAColor(configuredColor, alpha);
         } else if (!newBackgroundColors[category]) {
-          color = getRandomLightColor();
+          color = getRandomHSLAColor(alpha);
         } else {
-          color = newBackgroundColors[category];
-          const match = color.match(
-            /hsla\((\d+), (\d+)%?, (\d+)%?, (\d+\.?\d*?)\)/
-          );
-          if (match) {
-            const alpha = plugin.settings.categoryTransparency;
-            color = `hsla(${match[1]}, ${match[2]}%, ${match[3]}%, ${alpha})`;
-          }
+          color = getHSLAColor(category, alpha, newBackgroundColors);
         }
 
         newBackgroundColors[category] = color;
         document.documentElement.style.setProperty(`--${className}-bg`, color);
+        if (!plugin.isCategoryColorsReady) {
+          plugin.isCategoryColorsReady = true;
+        }
       });
     });
 
     setCategoryBackgroundColors(newBackgroundColors);
+    plugin.categoryBackgroundColors = newBackgroundColors;
   };
 
   useEffect(() => {
@@ -138,6 +122,7 @@ const TimetableViewComponent = forwardRef<
     const unregisterEvent = plugin.app.vault.on('modify', onFileModify);
     plugin.registerEvent(unregisterEvent);
     update();
+    plugin.isCategoryColorsReady = false;
     updateBackgroundColors();
     return () => plugin.app.vault.off('modify', onFileModify);
   }, [plugin, plugin.targetFile]);
@@ -171,9 +156,9 @@ const TimetableViewComponent = forwardRef<
   useEffect(() => {
     updateBackgroundColors();
   }, [
-    allCategories,
     JSON.stringify(plugin.settings.categoryColors),
     plugin.settings.categoryTransparency,
+    tasks,
   ]);
 
   useImperativeHandle(ref, () => ({

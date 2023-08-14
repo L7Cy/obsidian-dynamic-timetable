@@ -6,6 +6,7 @@ import { Task } from './TaskParser';
 import { CommandsManager } from './Commands';
 import { TimetableViewComponentRef } from './TimetableViewComponent';
 import React from 'react';
+import { StatisticsView } from './StatisticsView';
 
 export interface DynamicTimetableSettings {
   filePath: string | null;
@@ -50,6 +51,8 @@ export default class DynamicTimetable extends Plugin {
 
   private commandsManager: CommandsManager;
   timetableViewComponentRef: React.RefObject<TimetableViewComponentRef>;
+  categoryBackgroundColors: Record<string, string> = {};
+  isCategoryColorsReady: boolean = false;
 
   static DEFAULT_SETTINGS: DynamicTimetableSettings = {
     filePath: null,
@@ -91,6 +94,10 @@ export default class DynamicTimetable extends Plugin {
       'Timetable',
       (leaf: WorkspaceLeaf) => new TimetableView(leaf, this)
     );
+    this.registerView(
+      'Statistics',
+      (leaf: WorkspaceLeaf) => new StatisticsView(leaf, this)
+    );
 
     if (this.app.workspace.layoutReady) {
       this.initTimetableView();
@@ -108,6 +115,12 @@ export default class DynamicTimetable extends Plugin {
       id: 'toggle-timetable',
       name: 'Show/Hide Timetable',
       callback: () => this.commandsManager.toggleTimetable(),
+    });
+
+    this.addCommand({
+      id: 'toggle-statistics',
+      name: 'Show/Hide Statistics',
+      callback: () => this.commandsManager.toggleStatistics(),
     });
 
     this.addCommand({
@@ -144,6 +157,11 @@ export default class DynamicTimetable extends Plugin {
     } else {
       this.updateOpenTimetableViews();
     }
+    if (!this.isStatisticsOpen()) {
+      this.openStatistics();
+    } else {
+      this.updateOpenStatisticsViews();
+    }
     const taskManager = taskFunctions(this);
     const newTasks = await taskManager.initializeTasks();
     this.tasks = newTasks;
@@ -159,8 +177,22 @@ export default class DynamicTimetable extends Plugin {
     }
   }
 
+  async updateOpenStatisticsViews() {
+    for (const leaf of this.app.workspace.getLeavesOfType('Statistics')) {
+      const view = leaf.view;
+      if (view instanceof StatisticsView) {
+        this.checkTargetFile();
+        await view.update();
+      }
+    }
+  }
+
   isTimetableOpen(): boolean {
     return this.app.workspace.getLeavesOfType('Timetable').length > 0;
+  }
+
+  isStatisticsOpen(): boolean {
+    return this.app.workspace.getLeavesOfType('Statistics').length > 0;
   }
 
   async openTimetable() {
@@ -170,8 +202,19 @@ export default class DynamicTimetable extends Plugin {
     this.app.workspace.revealLeaf(leaf);
   }
 
+  async openStatistics() {
+    this.checkTargetFile();
+    const leaf = this.app.workspace.getRightLeaf(false);
+    leaf.setViewState({ type: 'Statistics' });
+    this.app.workspace.revealLeaf(leaf);
+  }
+
   closeTimetable() {
     this.app.workspace.detachLeavesOfType('Timetable');
+  }
+
+  closeStatistics() {
+    this.app.workspace.detachLeavesOfType('Statistics');
   }
 
   checkTargetFile() {

@@ -218,4 +218,29 @@ export class TaskParser {
     }
     return null;
   }
+
+  public getCategoryPerformance(
+    tasks: Task[]
+  ): Record<string, { estimatedTime: number; actualTime: number }> {
+    const performance: Record<
+      string,
+      { estimatedTime: number; actualTime: number }
+    > = {};
+
+    tasks.forEach((task) => {
+      task.categories.forEach((category) => {
+        const estimate = parseInt(task.estimate || '0');
+        const actualTime = task.isCompleted ? estimate : 0;
+
+        if (!performance[category]) {
+          performance[category] = { estimatedTime: 0, actualTime: 0 };
+        }
+
+        performance[category].estimatedTime += task.isCompleted ? 0 : estimate;
+        performance[category].actualTime += actualTime;
+      });
+    });
+
+    return performance;
+  }
 }

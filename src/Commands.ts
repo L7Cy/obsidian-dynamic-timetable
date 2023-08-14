@@ -18,6 +18,15 @@ export class CommandsManager {
     }
   }
 
+  toggleStatistics(): void {
+    const leaves = this.plugin.app.workspace.getLeavesOfType('Statistics');
+    if (leaves.length == 0) {
+      this.plugin.openStatistics();
+    } else {
+      this.plugin.closeStatistics();
+    }
+  }
+
   initializeTimetableView(): void {
     this.plugin.initTimetableView();
     this.plugin.timetableViewComponentRef.current?.scrollToFirstUncompletedTask();
