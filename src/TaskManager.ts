@@ -67,10 +67,10 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     { elapsedTime, remainingTime }: TaskUpdate
   ): string => {
     const taskRegex = new RegExp(
-      `^- \\[ \\] (.+?)(\\s*${plugin.settings.taskEstimateDelimiter.replace(
+      `^- \\[ \\] (.+?)\\s*${plugin.settings.taskEstimateDelimiter.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
-      )}\\s*(\\d+\\.?\\d*)?)?(\\s*@\\s*\\d{1,2}[:]?\\d{2})?(\\s*#.*)?$`,
+      )}\\s*(\\d+\\.?\\d*)?(\\s*@\\s*\\d{1,2}[:]?\\d{2})?(\\s*#.*)?$`,
       'm'
     );
 
