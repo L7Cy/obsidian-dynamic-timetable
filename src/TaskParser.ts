@@ -134,7 +134,7 @@ export class TaskParser {
     );
 
     if (!this.showCategoryNamesInTask) {
-      taskName = taskName.replace(/#\w+/g, '').trim();
+      taskName = taskName.replace(/#([\p{L}\p{N}\p{S}_]+)/gu, '').trim();
     }
 
     if (this.showStartTimeInTaskName) {
@@ -199,7 +199,7 @@ export class TaskParser {
   }
 
   private parseCategories(taskName: string): string[] {
-    const tagRegex = /#(\w+)/g;
+    const tagRegex = /#([\p{L}\p{N}\p{S}_]+)/gu;
     const categories = [];
     let match;
     while ((match = tagRegex.exec(taskName)) !== null) {
