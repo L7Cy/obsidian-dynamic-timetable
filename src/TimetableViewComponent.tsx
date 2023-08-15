@@ -14,8 +14,8 @@ import BufferTimeRow from './BufferTimeRow';
 import TaskRow from './TaskRow';
 import { MarkdownView } from 'obsidian';
 import {
-  getHSLAColor,
-  getRGBAColor,
+  convertHexToHSLA,
+  getHSLAColorForCategory,
   getRandomHSLAColor,
 } from './ColorUtils.ts';
 
@@ -84,6 +84,12 @@ const TimetableViewComponent = forwardRef<
   const updateBackgroundColors = () => {
     const newBackgroundColors = { ...categoryBackgroundColors };
 
+    Object.keys(newBackgroundColors).forEach((category) => {
+      if (!tasks.some((task) => task.categories.includes(category))) {
+        delete newBackgroundColors[category];
+      }
+    });
+
     tasks.forEach((task) => {
       task.categories.forEach((category) => {
         const className = `dt-category-${category}`;
@@ -94,11 +100,11 @@ const TimetableViewComponent = forwardRef<
         )?.color;
 
         if (configuredColor) {
-          color = getRGBAColor(configuredColor, alpha);
+          color = convertHexToHSLA(configuredColor, alpha);
         } else if (!newBackgroundColors[category]) {
           color = getRandomHSLAColor(alpha);
         } else {
-          color = getHSLAColor(category, alpha, newBackgroundColors);
+          color = getHSLAColorForCategory(category, alpha, newBackgroundColors);
         }
 
         newBackgroundColors[category] = color;
