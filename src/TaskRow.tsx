@@ -8,6 +8,7 @@ type TaskRowProps = {
   bufferTime: number | null;
   firstUncompletedTaskRef: React.MutableRefObject<HTMLTableRowElement | null> | null;
   categoryBackgroundColors: Record<string, string>;
+  allTasksCompleted: boolean;
 };
 
 const formatDateToTime = (date: Date) => {
@@ -26,6 +27,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   bufferTime,
   firstUncompletedTaskRef,
   categoryBackgroundColors,
+  allTasksCompleted,
 }) => {
   let bufferClass = '';
   if (
@@ -42,9 +44,10 @@ const TaskRow: React.FC<TaskRowProps> = ({
   const categoryClasses = createCategoryClasses(task.categories);
   const originalBackgroundColor =
     categoryBackgroundColors[task.categories[0]] || '';
-  const backgroundColor = task.isCompleted
-    ? originalBackgroundColor.replace(/,\s*([^,]+)\)/, ', 0.05)')
-    : originalBackgroundColor;
+  const backgroundColor =
+    task.isCompleted && !allTasksCompleted
+      ? originalBackgroundColor.replace(/,\s*([^,]+)\)/, ', 0.05)')
+      : originalBackgroundColor;
 
   const style = plugin.settings.applyBackgroundColorByCategory
     ? {
@@ -56,7 +59,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
     <tr
       ref={task.isCompleted ? null : firstUncompletedTaskRef}
       className={`${bufferClass} ${
-        task.isCompleted ? 'dt-completed' : ''
+        !allTasksCompleted && task.isCompleted ? 'dt-completed' : ''
       } ${categoryClasses}`}
       style={style}>
       <td>{task.task}</td>

@@ -38,6 +38,7 @@ const TimetableViewComponent = forwardRef<
   const [progressEstimate, setProgressEstimate] = useState(0);
   const taskManager = taskFunctions(plugin);
   const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
+  const allTasksCompleted = tasks.every((task) => task.isCompleted);
 
   const calculateBufferTime = (
     currentTaskEndTime: Date | null,
@@ -231,6 +232,7 @@ const TimetableViewComponent = forwardRef<
                 firstUncompletedTaskRef={
                   task === firstUncompletedTask ? firstUncompletedTaskRef : null
                 }
+                allTasksCompleted={allTasksCompleted}
               />
             );
 
