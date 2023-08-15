@@ -164,10 +164,14 @@ export default class DynamicTimetable extends Plugin {
   }
 
   async initTimetableView() {
+    this.isCategoryColorsReady = false;
     if (!this.isTimetableOpen()) {
       this.openTimetable();
     } else {
       this.updateOpenViews('Timetable');
+    }
+    while (!this.isCategoryColorsReady) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
     if (!this.isStatisticsOpen()) {
       this.openStatistics();

@@ -30,9 +30,6 @@ export class StatisticsView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.root = createRoot(this.containerEl);
-    while (!this.plugin.isCategoryColorsReady) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
     this.root.render(
       <StatisticsViewComponent
         plugin={this.plugin}
