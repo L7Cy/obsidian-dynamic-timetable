@@ -33,6 +33,7 @@ const TimetableViewComponent = forwardRef<
 >(({ plugin, commandsManager }, ref) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const firstUncompletedTaskRef = useRef<HTMLTableRowElement | null>(null);
+  const noticeRef = useRef<Notice | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progressDuration, setProgressDuration] = useState(0);
   const [progressEstimate, setProgressEstimate] = useState(0);
@@ -121,8 +122,6 @@ const TimetableViewComponent = forwardRef<
   };
 
   useEffect(() => {
-    let notice: Notice | null = null;
-
     const hasNegativeBufferTime = filteredTasks.some(
       (task, index, allTasks) => {
         const previousTask = allTasks[index - 1];
@@ -140,15 +139,18 @@ const TimetableViewComponent = forwardRef<
     );
 
     if (hasNegativeBufferTime) {
-      notice = new Notice(
-        'Warning: One or more tasks are likely to start later than scheduled.',
-        0
-      );
+      if (!noticeRef.current) {
+        noticeRef.current = new Notice(
+          'Warning: One or more tasks are likely to start later than scheduled.',
+          0
+        );
+      }
+    } else {
+      if (noticeRef.current) {
+        noticeRef.current.hide();
+        noticeRef.current = null;
+      }
     }
-
-    return () => {
-      if (notice) notice.hide();
-    };
   }, [tasks, filteredTasks]);
 
   useEffect(() => {
