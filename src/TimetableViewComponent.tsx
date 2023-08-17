@@ -12,7 +12,7 @@ import ProgressBar from './ProgressBar';
 import { CommandsManager } from './Commands';
 import BufferTimeRow from './BufferTimeRow';
 import TaskRow from './TaskRow';
-import { MarkdownView } from 'obsidian';
+import { MarkdownView, Notice } from 'obsidian';
 import {
   convertHexToHSLA,
   getHSLAColorForCategory,
@@ -119,6 +119,37 @@ const TimetableViewComponent = forwardRef<
     setCategoryBackgroundColors(newBackgroundColors);
     plugin.categoryBackgroundColors = newBackgroundColors;
   };
+
+  useEffect(() => {
+    let notice: Notice | null = null;
+
+    const hasNegativeBufferTime = filteredTasks.some(
+      (task, index, allTasks) => {
+        const previousTask = allTasks[index - 1];
+        const bufferTime = calculateBufferTime(
+          previousTask?.endTime || new Date(),
+          task.startTime
+        );
+        return (
+          task.originalStartTime &&
+          bufferTime !== null &&
+          bufferTime < 0 &&
+          !task.isCompleted
+        );
+      }
+    );
+
+    if (hasNegativeBufferTime) {
+      notice = new Notice(
+        'Warning: One or more tasks are likely to start later than scheduled.',
+        0
+      );
+    }
+
+    return () => {
+      if (notice) notice.hide();
+    };
+  }, [tasks, filteredTasks]);
 
   useEffect(() => {
     const onFileModify = async (file: any) => {
