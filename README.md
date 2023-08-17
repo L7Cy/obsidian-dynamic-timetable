@@ -32,8 +32,8 @@ The start time is optional and can be added in two formats:
 - Time only (e.g., `@ 14:30`)
 - Date and time (e.g., `@ 2023-04-16T14:30`)
 
-### Task background color
-When a start time is specified, tasks will have a background color based on the comparison with the end time of the previous task:
+### Task text color
+When a start time is specified, tasks will have a text color based on the comparison with the end time of the previous task:
 
 - 🟢Green: Indicates that the task is likely to start at the scheduled time, and there may be room to add more tasks before it.
 - 🔴Red: Indicates that it may be difficult to start the task at the scheduled time, and adjustments to previous tasks may be necessary.
