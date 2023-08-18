@@ -82,7 +82,7 @@ export class TaskParser {
         const originalStartTime = Boolean(startTime);
 
         if (!isCompleted && !firstUncompletedTaskFound) {
-          startTime = previousEndTime || yamlStartTime;
+          startTime = yamlStartTime;
           firstUncompletedTaskFound = true;
         } else if (!startTime && previousEndTime) {
           startTime = previousEndTime;
