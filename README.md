@@ -2,7 +2,7 @@
 
 Dynamic Timetable is an [Obsidian](https://obsidian.md/) plugin that dynamically generates task timetables from Markdown files. This plugin was inspired by [タスクシュート(TaskChute)](https://cyblog.biz/pro/taskchute2/index2.php).
 
-[![Image from Gyazo](https://i.gyazo.com/807381e9ff8284f186b87dc887f01376.gif)](https://gyazo.com/807381e9ff8284f186b87dc887f01376)
+[![Image from Gyazo](https://i.gyazo.com/8d8e6c74fc01416cd093d13c58632214.png)](https://gyazo.com/8d8e6c74fc01416cd093d13c58632214)
 
 ## Installation
 The plugin is now officially released as a community plugin. You can install it from below.
