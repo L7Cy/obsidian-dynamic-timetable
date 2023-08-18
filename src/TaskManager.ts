@@ -80,7 +80,10 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
       const taskMatch = line.match(taskRegex);
       if (taskMatch) {
         const originalTaskName = taskMatch[1];
-        const tags = line.match(/#([\p{L}\p{N}\p{S}_]+)/gu)?.join(' ') || '';
+        const tags =
+          line
+            .match(/#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu)
+            ?.join(' ') || '';
         const actualStartTime = new Date(Date.now() - elapsedTime * 60 * 1000);
 
         lines[i] = `- [x] ${originalTaskName.replace(tags, '').trim()} ${
