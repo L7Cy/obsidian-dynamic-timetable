@@ -70,7 +70,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
       `^- \\[ \\] (.+?)\\s*${plugin.settings.taskEstimateDelimiter.replace(
         /[.*+?^${}()|[\]\\]/g,
         '\\$&'
-      )}\\s*(\\d+\\.?\\d*)?(\\s*@\\s*\\d{1,2}[:]?\\d{2})?(\\s*#.*)?$`,
+      )}\\s*(\\d+\\.?\\d*)?(\\s*@\\s*\\d{1,2}[:]?\\d{2})?(\\s*#.*)?\\s*$`,
       'm'
     );
 
