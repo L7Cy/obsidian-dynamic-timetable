@@ -33,7 +33,7 @@ const TaskRow: React.FC<TaskRowProps> = ({
   if (
     task.originalStartTime &&
     bufferTime !== null &&
-    bufferTime >= 0 &&
+    0 <= bufferTime &&
     !task.isCompleted
   ) {
     bufferClass = 'on-time';
