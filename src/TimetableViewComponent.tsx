@@ -43,8 +43,10 @@ const TimetableViewComponent = forwardRef<
 
   const calculateBufferTime = (
     currentTaskEndTime: Date | null,
-    taskStartTime: Date | null
+    taskStartTime: Date | null,
+    index: number
   ): number | null => {
+    if (index === 0) return 0;
     if (currentTaskEndTime && taskStartTime) {
       return Math.ceil(
         (taskStartTime.getTime() - currentTaskEndTime.getTime()) / (60 * 1000)
@@ -133,7 +135,8 @@ const TimetableViewComponent = forwardRef<
         const previousTask = allTasks[index - 1];
         const bufferTime = calculateBufferTime(
           previousTask?.endTime || new Date(),
-          task.startTime
+          task.startTime,
+          index
         );
         return (
           task.originalStartTime &&
@@ -242,7 +245,8 @@ const TimetableViewComponent = forwardRef<
             const previousTask = allTasks[index - 1];
             const bufferTime = calculateBufferTime(
               previousTask?.endTime || new Date(),
-              task.startTime
+              task.startTime,
+              index
             );
 
             const rows = [];
