@@ -91,6 +91,7 @@ const TimetableViewComponent = forwardRef<
         delete newBackgroundColors[category];
       }
     });
+    const existingHues: number[] = [];
 
     tasks.forEach((task) => {
       task.categories.forEach((category) => {
@@ -104,11 +105,16 @@ const TimetableViewComponent = forwardRef<
         if (configuredColor) {
           color = convertHexToHSLA(configuredColor, alpha);
         } else if (!newBackgroundColors[category]) {
-          color = getRandomHSLAColor(alpha);
+          color = getRandomHSLAColor(alpha, existingHues);
         } else {
           color = getHSLAColorForCategory(category, alpha, newBackgroundColors);
         }
 
+        const hueMatch = color.match(/hsla\((\d+),/);
+        if (hueMatch && hueMatch[1]) {
+          const hue = parseInt(hueMatch[1]);
+          existingHues.push(hue);
+        }
         newBackgroundColors[category] = color;
         document.documentElement.style.setProperty(`--${className}-bg`, color);
         if (!plugin.isCategoryColorsReady) {

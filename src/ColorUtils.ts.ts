@@ -51,9 +51,37 @@ export const getHSLAColorForCategory = (
     : color;
 };
 
-export const getRandomHSLAColor = (alpha: number): string => {
-  const hue = Math.floor(Math.random() * 360);
-  const saturation = 80;
-  const lightness = 80;
-  return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+export const getRandomHSLAColor = (
+  alpha: number,
+  existingHues: number[] = []
+): string => {
+  const huePool = Array.from({ length: 360 }, (_, i) => i);
+  existingHues.forEach((hue) => {
+    const index = huePool.indexOf(hue);
+    if (index > -1) {
+      huePool.splice(index, 1);
+    }
+  });
+
+  huePool.sort(() => Math.random() - 0.5);
+
+  let maxDistance = -1;
+  let bestHue = 0;
+
+  huePool.forEach((candidateHue) => {
+    const distances = existingHues.map((existingHue) => {
+      const distance = Math.min(
+        Math.abs(candidateHue - existingHue),
+        360 - Math.abs(candidateHue - existingHue)
+      );
+      return distance;
+    });
+    const minDistance = Math.min(...distances);
+    if (minDistance > maxDistance) {
+      maxDistance = minDistance;
+      bestHue = candidateHue;
+    }
+  });
+
+  return `hsla(${bestHue}, 80%, 80%, ${alpha})`;
 };
