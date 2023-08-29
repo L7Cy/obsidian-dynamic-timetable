@@ -37,13 +37,6 @@ export interface DynamicTimetableSettings {
     | { category: string; color: string }[];
 }
 
-declare module 'obsidian' {
-  interface Workspace {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    on(eventName: 'layout-ready', callback: () => any, ctx?: any): EventRef;
-  }
-}
-
 type ViewType = 'Timetable' | 'Statistics';
 
 export default class DynamicTimetable extends Plugin {
@@ -103,9 +96,7 @@ export default class DynamicTimetable extends Plugin {
     if (this.app.workspace.layoutReady) {
       this.initTimetableView();
     } else {
-      this.registerEvent(
-        this.app.workspace.on('layout-ready', this.initTimetableView.bind(this))
-      );
+      this.app.workspace.onLayoutReady(this.initTimetableView.bind(this));
     }
     this.timetableViewComponentRef =
       React.createRef<TimetableViewComponentRef>();
