@@ -70,11 +70,6 @@ export default class DynamicTimetable extends Plugin {
     categoryTransparency: 0.3,
   };
 
-  onunload(): void {
-    this.app.workspace.detachLeavesOfType('Timetable');
-    this.app.workspace.detachLeavesOfType('Statistics');
-  }
-
   async onload() {
     console.log('DynamicTimetable: onload');
     await this.initSettings();
