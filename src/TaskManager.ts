@@ -135,6 +135,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 
     let content = await plugin.app.vault.cachedRead(plugin.targetFile);
     const elapsedTime = getElapsedTime(content);
+    await updateDictionaryFile(task, elapsedTime);
     const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
     content = updateTaskInContent(content, taskUpdate);
@@ -146,7 +147,6 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     content = await plugin.app.vault.cachedRead(plugin.targetFile);
     content = updateStartTimeInYAML(content, now);
     await plugin.app.vault.modify(plugin.targetFile, content);
-    await updateDictionaryFile(task, elapsedTime);
   };
 
   const completeTask = async (task: Task) => {
@@ -175,6 +175,17 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
   };
 
   const updateDictionaryFile = async (task: Task, elapsedTime: number) => {
+    if (!plugin.targetFile) {
+      return;
+    }
+    const targetFileContent = await plugin.app.vault.cachedRead(
+      plugin.targetFile
+    );
+    const taskParser = TaskParser.fromSettings(plugin.settings);
+    let tasks: Task[] = taskParser.filterAndParseTasks(targetFileContent);
+    const firstUncompletedTask = tasks.find((task) => !task.isCompleted);
+    if (!firstUncompletedTask) return;
+
     const dictionaryPath = plugin.settings.pathToDictionary;
     const dictionaryFile = plugin.app.metadataCache.getFirstLinkpathDest(
       dictionaryPath,
@@ -192,7 +203,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     };
 
     const taskLineRegex = new RegExp(
-      `^- \\[ \\] ${escapeRegExp(task.originalTaskName)} ${
+      `^- \\[ \\] ${escapeRegExp(firstUncompletedTask.originalTaskName)} ${
         plugin.settings.taskEstimateDelimiter
       } (.+)$`,
       'm'
@@ -222,10 +233,10 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     trimmedMean = calculateTrimmedMean(recentTimes);
     median = calculateMedian(recentTimes);
 
-    const newLine = `- [ ] ${task.originalTaskName} ${
+    const newLine = `- [ ] ${firstUncompletedTask.originalTaskName} ${
       plugin.settings.taskEstimateDelimiter
     } ${trimmedMean},Mean: ${trimmedMean} Median: ${median} Recent: ${elapsedTime},${
-      task.task
+      firstUncompletedTask.task
     }%%${recentTimes.join('|')}%%`;
 
     if (match) {
