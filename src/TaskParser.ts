@@ -1,6 +1,7 @@
 import { DynamicTimetableSettings } from './main';
 
 export interface Task {
+  originalTaskName: string;
   task: string;
   startTime: Date | null;
   estimate: string | null;
@@ -68,7 +69,7 @@ export class TaskParser {
           task.startsWith('- [x]') ||
           task.startsWith('+ [x]') ||
           task.startsWith('* [x]');
-        const taskName = this.parseTaskName(task);
+        const { taskName, originalTaskName } = this.parseTaskName(task);
 
         if (dateDelimiterFound) {
           nextDay++;
@@ -97,6 +98,7 @@ export class TaskParser {
 
         if (estimate) {
           acc.push({
+            originalTaskName: originalTaskName,
             task: taskName,
             startTime: startTime,
             estimate: estimate,
@@ -117,10 +119,26 @@ export class TaskParser {
     return this.dateDelimiter.test(line);
   }
 
-  public parseTaskName(taskName: string): string {
+  public parseTaskName(taskName: string): {
+    taskName: string;
+    originalTaskName: string;
+  } {
     const taskNameRegex = /^[-+*]\s*\[\s*.\s*\]\s*/;
     const linkRegex = /\[\[([^\[\]]*\|)?([^\[\]]+)\]\]/g;
     const markdownLinkRegex = /\[([^\[\]]+)\]\(.+?\)/g;
+    const estimateRegex = new RegExp(`\\${this.separator}\\s*\\d+\\s*`);
+    const startTimeRegex = new RegExp(
+      `\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:?\\d{2})`
+    );
+    const categoryRegex = /#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu;
+
+    let originalTaskName = taskName;
+    originalTaskName = originalTaskName
+      .replace(taskNameRegex, '')
+      .replace(estimateRegex, '')
+      .replace(startTimeRegex, '')
+      .replace(categoryRegex, '')
+      .trim();
 
     taskName = taskName
       .replace(taskNameRegex, '')
@@ -129,14 +147,8 @@ export class TaskParser {
       .replace(markdownLinkRegex, '$1')
       .trim();
 
-    const startTimeRegex = new RegExp(
-      `\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:?\\d{2})`
-    );
-
     if (!this.showCategoryNamesInTask) {
-      taskName = taskName
-        .replace(/#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu, '')
-        .trim();
+      taskName = taskName.replace(categoryRegex, '').trim();
     }
 
     if (this.showStartTimeInTaskName) {
@@ -149,11 +161,10 @@ export class TaskParser {
     }
 
     if (!this.showEstimateInTaskName) {
-      const estimateRegex = new RegExp(`\\${this.separator}\\s*\\d+\\s*`);
       taskName = taskName.replace(estimateRegex, '').trim();
     }
 
-    return taskName;
+    return { taskName, originalTaskName };
   }
 
   public parseStartTime(task: string, nextDay: number): Date | null {

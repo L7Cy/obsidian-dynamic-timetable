@@ -146,6 +146,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     content = await plugin.app.vault.cachedRead(plugin.targetFile);
     content = updateStartTimeInYAML(content, now);
     await plugin.app.vault.modify(plugin.targetFile, content);
+    await updateDictionaryFile(task, elapsedTime);
   };
 
   const completeTask = async (task: Task) => {
@@ -171,6 +172,88 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
 
     await updateTask(firstUncompletedTask, remainingTime);
+  };
+
+  const updateDictionaryFile = async (task: Task, elapsedTime: number) => {
+    const dictionaryPath = plugin.settings.pathToDictionary;
+    const dictionaryFile = plugin.app.metadataCache.getFirstLinkpathDest(
+      dictionaryPath,
+      '/'
+    );
+
+    if (!dictionaryFile) {
+      return;
+    }
+
+    let content = await plugin.app.vault.cachedRead(dictionaryFile);
+
+    const escapeRegExp = (string: string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    const taskLineRegex = new RegExp(
+      `^- \\[ \\] ${escapeRegExp(task.originalTaskName)} ${
+        plugin.settings.taskEstimateDelimiter
+      } (.+)$`,
+      'm'
+    );
+    const match = content.match(taskLineRegex);
+
+    let recentTimes: number[] = [];
+    let trimmedMean = elapsedTime;
+    let median = elapsedTime;
+
+    if (match) {
+      const stats = match[1].split(',');
+      if (stats.length > 2 && stats[2]) {
+        const timesString = stats[2].split('%%')[1];
+        if (timesString) {
+          recentTimes = timesString.split('|').map(parseFloat);
+        }
+      }
+    }
+
+    recentTimes.push(elapsedTime);
+
+    if (recentTimes.length > 20) {
+      recentTimes.shift();
+    }
+
+    trimmedMean = calculateTrimmedMean(recentTimes);
+    median = calculateMedian(recentTimes);
+
+    const newLine = `- [ ] ${task.originalTaskName} ${
+      plugin.settings.taskEstimateDelimiter
+    } ${trimmedMean},Mean: ${trimmedMean} Median: ${median} Recent: ${elapsedTime},${
+      task.task
+    }%%${recentTimes.join('|')}%%`;
+
+    if (match) {
+      content = content.replace(taskLineRegex, newLine);
+    } else {
+      content += '\n' + newLine;
+    }
+
+    await plugin.app.vault.modify(dictionaryFile, content);
+  };
+
+  const calculateMedian = (values: number[]): number => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median =
+      sorted.length % 2 !== 0
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    return Math.ceil(median);
+  };
+
+  const calculateTrimmedMean = (values: number[]): number => {
+    if (values.length <= 2) return Math.ceil(calculateMedian(values));
+    const sorted = [...values].sort((a, b) => a - b);
+    sorted.pop();
+    sorted.shift();
+    const trimmedMean = sorted.reduce((a, b) => a + b) / sorted.length;
+    return Math.ceil(trimmedMean);
   };
 
   return {
