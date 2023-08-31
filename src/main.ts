@@ -27,6 +27,7 @@ export interface DynamicTimetableSettings {
   showCategoryNamesInTask: boolean;
   categoryColors: { category: string; color: string }[];
   categoryTransparency: number;
+  pathToDictionary: string;
   [key: string]:
     | string
     | boolean
@@ -68,6 +69,7 @@ export default class DynamicTimetable extends Plugin {
     showCategoryNamesInTask: false,
     categoryColors: [],
     categoryTransparency: 0.3,
+    pathToDictionary: '',
   };
 
   async onload() {

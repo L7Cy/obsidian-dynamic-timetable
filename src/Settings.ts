@@ -68,6 +68,12 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       ? this.plugin.settings.headerNames.join(', ')
       : '';
     this.createHeaderNamesSetting(headerNames);
+    this.createTextSetting(
+      'Path to Dictionary for Suggestions',
+      'pathToDictionary',
+      'Enter the path to the dictionary file for suggestions.',
+      'path/to/dictionary.md'
+    );
     this.createToggleSetting(
       'Apply Background Color by Category (tag)',
       'applyBackgroundColorByCategory',
