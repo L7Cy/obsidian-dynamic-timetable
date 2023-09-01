@@ -135,7 +135,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 
     let content = await plugin.app.vault.cachedRead(plugin.targetFile);
     const elapsedTime = getElapsedTime(content);
-    await updateDictionaryFile(task, elapsedTime);
+    await updateDictionaryFile(elapsedTime);
     const taskUpdate: TaskUpdate = { task, elapsedTime, remainingTime };
 
     content = updateTaskInContent(content, taskUpdate);
@@ -174,7 +174,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     await updateTask(firstUncompletedTask, remainingTime);
   };
 
-  const updateDictionaryFile = async (task: Task, elapsedTime: number) => {
+  const updateDictionaryFile = async (elapsedTime: number) => {
     if (!plugin.targetFile) {
       return;
     }
