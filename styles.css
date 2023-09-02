@@ -1,6 +1,5 @@
-.on-time td,
-.late td {
-  vertical-align: text-top;
+.dt-task-row {
+  vertical-align: center;
 }
 
 .late {
