@@ -53,11 +53,11 @@ export const StatisticsViewComponent = forwardRef((props: Props, ref) => {
 
   const actualBackgroundColors = performanceArray.map((p) => {
     const color = categoryBackgroundColors[p.category];
-    return color.replace(/,\s*([^,]+)\)/, ', 1)');
+    return color ? color.replace(/,\s*([^,]+)\)/, ', 1)') : '';
   });
   const estimatedBackgroundColors = performanceArray.map((p) => {
     const color = categoryBackgroundColors[p.category];
-    return color.replace(/,\s*([^,]+)\)/, ', 0.3)');
+    return color ? color.replace(/,\s*([^,]+)\)/, ', 0.3)') : '';
   });
 
   const actualTimes = performanceArray.map((p) => p.actualTime);
