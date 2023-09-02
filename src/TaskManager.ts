@@ -246,6 +246,9 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     }
 
     await plugin.app.vault.modify(dictionaryFile, content);
+    await (plugin.app as any).commands.executeCommandById(
+      'various-complements:reload-custom-dictionaries'
+    );
   };
 
   const calculateMedian = (values: number[]): number => {
