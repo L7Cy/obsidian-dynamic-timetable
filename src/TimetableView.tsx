@@ -2,23 +2,19 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { WorkspaceLeaf, ItemView } from 'obsidian';
 import DynamicTimetable from './main';
-import TimetableViewComponent, {
-  TimetableViewComponentRef,
-} from './TimetableViewComponent';
+import TimetableViewComponent from './TimetableViewComponent';
 import { CommandsManager } from './Commands';
 
 export class TimetableView extends ItemView {
   private readonly plugin: DynamicTimetable;
-  private componentRef: React.RefObject<TimetableViewComponentRef>;
   private root: any;
   private commandsManager: CommandsManager;
 
   constructor(leaf: WorkspaceLeaf, plugin: DynamicTimetable) {
     super(leaf);
     this.plugin = plugin;
-    this.componentRef = React.createRef<TimetableViewComponentRef>();
     this.commandsManager = new CommandsManager(plugin);
-    this.icon = "table";
+    this.icon = 'table';
   }
 
   getViewType(): string {
@@ -33,7 +29,7 @@ export class TimetableView extends ItemView {
     this.root = createRoot(this.containerEl);
     this.root.render(
       <TimetableViewComponent
-        ref={this.componentRef}
+        ref={this.plugin.timetableViewComponentRef}
         plugin={this.plugin}
         commandsManager={this.commandsManager}
       />
@@ -47,8 +43,8 @@ export class TimetableView extends ItemView {
   }
 
   async update() {
-    if (this.componentRef.current) {
-      this.componentRef.current.update();
+    if (this.plugin.timetableViewComponentRef.current) {
+      this.plugin.timetableViewComponentRef.current.update();
     }
   }
 }

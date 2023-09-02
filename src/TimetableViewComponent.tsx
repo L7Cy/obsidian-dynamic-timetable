@@ -12,7 +12,7 @@ import ProgressBar from './ProgressBar';
 import { CommandsManager } from './Commands';
 import BufferTimeRow from './BufferTimeRow';
 import TaskRow from './TaskRow';
-import { MarkdownView, Notice } from 'obsidian';
+import { Notice } from 'obsidian';
 import {
   convertHexToHSLA,
   getHSLAColorForCategory,
@@ -70,10 +70,6 @@ const TimetableViewComponent = forwardRef<
 
   const performScroll = () => {
     if (firstUncompletedTaskRef.current && containerRef.current) {
-      const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-      if (activeView?.file === plugin.targetFile) {
-        return;
-      }
       const containerHeight = containerRef.current.offsetHeight;
       const taskOffsetTop = firstUncompletedTaskRef.current.offsetTop;
       const scrollToPosition = taskOffsetTop - containerHeight / 5;
@@ -199,7 +195,7 @@ const TimetableViewComponent = forwardRef<
 
   useEffect(() => {
     performScroll();
-  }, [tasks]);
+  }, [plugin.targetFile]);
 
   useEffect(() => {
     updateBackgroundColors();
