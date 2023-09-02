@@ -212,7 +212,7 @@ export class TaskParser {
   }
 
   private parseCategories(taskName: string): string[] {
-    const tagRegex = /#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu;
+    const tagRegex = /\s#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu;
     const categories = [];
     let match;
     while ((match = tagRegex.exec(taskName)) !== null) {
