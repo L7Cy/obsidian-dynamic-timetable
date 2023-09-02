@@ -272,6 +272,8 @@ const TimetableViewComponent = forwardRef<
                   task === firstUncompletedTask ? firstUncompletedTaskRef : null
                 }
                 allTasksCompleted={allTasksCompleted}
+                duration={progressDuration}
+                estimate={progressEstimate}
               />
             );
 

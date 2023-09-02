@@ -28,6 +28,11 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
     );
     this.createToggleSetting('Show Buffer Time Rows', 'showBufferTime');
     this.createToggleSetting('Show Completed Tasks', 'showCompletedTasks');
+    this.createToggleSetting(
+      'Show Remaining Time',
+      'showRemainingTime',
+      'Show remaining time instead of the time for current task in progress.',
+    );
     this.createToggleSetting('Show Progress Bar', 'showProgressBar');
     if (this.plugin.settings.showProgressBar) {
       this.createTextSetting(

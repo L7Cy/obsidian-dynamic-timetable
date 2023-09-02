@@ -28,6 +28,7 @@ export interface DynamicTimetableSettings {
   categoryColors: { category: string; color: string }[];
   categoryTransparency: number;
   pathToDictionary: string;
+  showRemainingTime: boolean;
   [key: string]:
     | string
     | boolean
@@ -70,6 +71,7 @@ export default class DynamicTimetable extends Plugin {
     categoryColors: [],
     categoryTransparency: 0.3,
     pathToDictionary: '',
+    showRemainingTime: false,
   };
 
   async onload() {
