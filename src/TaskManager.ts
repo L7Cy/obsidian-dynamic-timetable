@@ -82,7 +82,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
         const originalTaskName = taskMatch[1];
         const tags =
           line
-            .match(/#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu)
+            .match(/\s#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu)
             ?.join(' ') || '';
         const actualStartTime = new Date(Date.now() - elapsedTime * 60 * 1000);
 

@@ -130,7 +130,7 @@ export class TaskParser {
     const startTimeRegex = new RegExp(
       `\\${this.startTimeDelimiter}\\s*(?:\\d{4}-\\d{2}-\\d{2}T)?(\\d{1,2}:?\\d{2})`
     );
-    const categoryRegex = /#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu;
+    const categoryRegex = /\s#([^\s!#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]+)/gu;
 
     let originalTaskName = taskName;
     originalTaskName = originalTaskName
