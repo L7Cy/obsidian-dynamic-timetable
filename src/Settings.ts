@@ -31,7 +31,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
     this.createToggleSetting(
       'Show Remaining Time',
       'showRemainingTime',
-      'Show remaining time instead of the time for current task in progress.',
+      'Show remaining time instead of the time for current task in progress.'
     );
     this.createToggleSetting('Show Progress Bar', 'showProgressBar');
     if (this.plugin.settings.showProgressBar) {
@@ -70,6 +70,12 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       'Enter the path to the dictionary file for suggestions.',
       'path/to/dictionary.md'
     );
+    this.createTextAreaSetting(
+      'Custom URL Scheme',
+      'customUrlScheme',
+      'Enter the URL scheme you want to execute when a task is completed. You can use the following placeholders: {{minutes}}, {{seconds}}, {{taskName}}',
+      'your-app-scheme://doSomething?minutes={{minutes}}&seconds={{seconds}}&taskName={{taskName}}'
+    );
     this.createToggleSetting(
       'Apply Background Color by Category (tag)',
       'applyBackgroundColorByCategory',
@@ -97,6 +103,28 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
         .setValue((this.plugin.settings[key] as string) || '');
       el.inputEl.addEventListener('blur', async (event) => {
         const value = (event.target as HTMLInputElement).value;
+        await this.plugin.updateSetting(key, value);
+      });
+      return el;
+    });
+  }
+
+  createTextAreaSetting(
+    name: string,
+    key: string,
+    desc?: string,
+    placeholder?: string
+  ) {
+    const setting = new Setting(this.containerEl).setName(name);
+    if (desc) {
+      setting.setDesc(desc);
+    }
+    setting.addTextArea((text) => {
+      const el = text
+        .setPlaceholder(placeholder || '')
+        .setValue((this.plugin.settings[key] as string) || '');
+      el.inputEl.addEventListener('blur', async (event) => {
+        const value = (event.target as HTMLTextAreaElement).value;
         await this.plugin.updateSetting(key, value);
       });
       return el;

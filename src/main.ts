@@ -29,6 +29,7 @@ export interface DynamicTimetableSettings {
   categoryTransparency: number;
   pathToDictionary: string;
   showRemainingTime: boolean;
+  customUrlScheme: string;
   [key: string]:
     | string
     | boolean
@@ -72,6 +73,7 @@ export default class DynamicTimetable extends Plugin {
     categoryTransparency: 0.3,
     pathToDictionary: '',
     showRemainingTime: false,
+    customUrlScheme: '',
   };
 
   async onload() {
