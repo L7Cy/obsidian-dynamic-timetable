@@ -151,6 +151,37 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 
   const completeTask = async (task: Task) => {
     await updateTask(task, undefined);
+
+    if (!plugin.targetFile) {
+      return;
+    }
+
+    let content = await plugin.app.vault.cachedRead(plugin.targetFile);
+    const taskParser = TaskParser.fromSettings(plugin.settings);
+    let tasks: Task[] = taskParser.filterAndParseTasks(content);
+    const nextUncompletedTask = tasks.find((t) => !t.isCompleted && t !== task);
+
+    if (nextUncompletedTask && plugin.settings.customUrlScheme) {
+      let customUrl = plugin.settings.customUrlScheme;
+
+      const nextTaskName = nextUncompletedTask.task;
+      const nextTaskEstimate = nextUncompletedTask.estimate;
+      if (!nextTaskEstimate) {
+        return;
+      }
+
+      const nextTaskMinutes = parseInt(nextTaskEstimate);
+      const nextTaskSeconds = nextTaskMinutes * 60;
+
+      customUrl = customUrl.replace('{{minutes}}', nextTaskMinutes.toString());
+      customUrl = customUrl.replace('{{seconds}}', nextTaskSeconds.toString());
+      customUrl = customUrl.replace(
+        '{{taskName}}',
+        encodeURIComponent(nextTaskName)
+      );
+
+      window.open(customUrl);
+    }
   };
 
   const interruptTask = async () => {
