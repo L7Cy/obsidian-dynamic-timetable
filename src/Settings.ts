@@ -64,10 +64,26 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       ? this.plugin.settings.headerNames.join(', ')
       : '';
     this.createHeaderNamesSetting(headerNames);
+    const pathToDictionaryDesc = this.containerEl.createEl('p');
+    pathToDictionaryDesc.style.marginBlockStart = '0em';
+    pathToDictionaryDesc.style.marginBlockEnd = '0em';
+
+    pathToDictionaryDesc.appendChild(
+      createEl('span', {
+        text: 'Enter the path to the custom dictionary file for ',
+      })
+    );
+    pathToDictionaryDesc.appendChild(
+      createEl('a', {
+        text: 'Various Complements',
+        href: 'obsidian://show-plugin?id=various-complements',
+      })
+    );
+    pathToDictionaryDesc.appendText('.');
     this.createTextSetting(
       'Path to Dictionary for Suggestions',
       'pathToDictionary',
-      'Enter the path to the dictionary file for suggestions.',
+      pathToDictionaryDesc,
       'path/to/dictionary.md'
     );
     this.createTextAreaSetting(
@@ -90,7 +106,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
   createTextSetting(
     name: string,
     key: string,
-    desc?: string,
+    desc?: any,
     placeholder?: string
   ) {
     const setting = new Setting(this.containerEl).setName(name);
@@ -123,7 +139,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       const el = text
         .setPlaceholder(placeholder || '')
         .setValue((this.plugin.settings[key] as string) || '');
-      el.inputEl.style.height = "60px";
+      el.inputEl.style.height = '60px';
       el.inputEl.addEventListener('blur', async (event) => {
         const value = (event.target as HTMLTextAreaElement).value;
         await this.plugin.updateSetting(key, value);
