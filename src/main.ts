@@ -72,7 +72,7 @@ export default class DynamicTimetable extends Plugin {
     categoryColors: [],
     categoryTransparency: 0.3,
     pathToDictionary: '',
-    showRemainingTime: false,
+    showRemainingTime: true,
     customUrlScheme: '',
   };
 
