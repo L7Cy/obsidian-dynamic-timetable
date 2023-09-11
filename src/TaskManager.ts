@@ -236,7 +236,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     const taskLineRegex = new RegExp(
       `^${escapeRegExp(firstUncompletedTask.originalTaskName)} ${
         plugin.settings.taskEstimateDelimiter
-      } (.+)$`,
+      }(.+)$`,
       'm'
     );
     const match = content.match(taskLineRegex);
@@ -266,7 +266,7 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
 
     const newLine = `${firstUncompletedTask.originalTaskName} ${
       plugin.settings.taskEstimateDelimiter
-    } ${trimmedMean},Mean: ${trimmedMean} Median: ${median} Recent: ${elapsedTime},${
+    }${trimmedMean},Trimmed Mean: ${trimmedMean} Median: ${median} Recent: ${elapsedTime},${
       firstUncompletedTask.task
     }%%${recentTimes.join('|')}%%`;
 
