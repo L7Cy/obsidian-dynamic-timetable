@@ -123,6 +123,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       const el = text
         .setPlaceholder(placeholder || '')
         .setValue((this.plugin.settings[key] as string) || '');
+      el.inputEl.style.height = "60px";
       el.inputEl.addEventListener('blur', async (event) => {
         const value = (event.target as HTMLTextAreaElement).value;
         await this.plugin.updateSetting(key, value);
