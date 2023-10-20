@@ -115,10 +115,10 @@ const TimetableViewComponent = forwardRef<
         }
         newBackgroundColors[category] = color;
         document.documentElement.style.setProperty(`--${className}-bg`, color);
-        if (!plugin.isCategoryColorsReady) {
-          plugin.isCategoryColorsReady = true;
-        }
       });
+      if (!plugin.isCategoryColorsReady) {
+        plugin.isCategoryColorsReady = true;
+      }
     });
 
     setCategoryBackgroundColors(newBackgroundColors);
