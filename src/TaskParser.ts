@@ -13,7 +13,7 @@ export interface Task {
 
 export class TaskParser {
   private dateDelimiter: RegExp;
-  private parseUntilRegex: RegExp;
+  private showUntilRegex: RegExp;
 
   constructor(
     private separator: string,
@@ -22,11 +22,11 @@ export class TaskParser {
     private showStartTimeInTaskName: boolean,
     private showEstimateInTaskName: boolean,
     private showCategoryNamesInTask: boolean,
-    parseUntilRegex: string
+    showUntilRegex: string
   ) {
     this.dateDelimiter = dateDelimiter ? new RegExp(dateDelimiter) : /(?!x)x/;
-    this.parseUntilRegex = parseUntilRegex
-      ? new RegExp(parseUntilRegex)
+    this.showUntilRegex = showUntilRegex
+      ? new RegExp(showUntilRegex)
       : /(?!x)x/;
   }
 
@@ -38,7 +38,7 @@ export class TaskParser {
       settings.showStartTimeInTaskName,
       settings.showEstimateInTaskName,
       settings.showCategoryNamesInTask,
-      settings.parseUntilRegex
+      settings.showUntilRegex
     );
   }
 
@@ -61,7 +61,7 @@ export class TaskParser {
           }
           return acc;
         }
-        if (this.parseUntilRegex.test(task)) {
+        if (this.showUntilRegex.test(task)) {
           stopParsing = true;
           return acc;
         }

@@ -63,7 +63,7 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
     this.createTextSetting(
       'Show Until Regex',
       'showUntilRegex',
-      'Enter a regex. Tasks will be shown until a line matching this regex is found.',
+      'Enter a regex. Tasks will be shown until a line matching this regex is found.'
     );
     const headerNames = Array.isArray(this.plugin.settings.headerNames)
       ? this.plugin.settings.headerNames.join(', ')
