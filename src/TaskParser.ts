@@ -13,6 +13,7 @@ export interface Task {
 
 export class TaskParser {
   private dateDelimiter: RegExp;
+  private parseUntilRegex: RegExp;
 
   constructor(
     private separator: string,
@@ -20,9 +21,13 @@ export class TaskParser {
     dateDelimiter: string,
     private showStartTimeInTaskName: boolean,
     private showEstimateInTaskName: boolean,
-    private showCategoryNamesInTask: boolean
+    private showCategoryNamesInTask: boolean,
+    parseUntilRegex: string
   ) {
     this.dateDelimiter = dateDelimiter ? new RegExp(dateDelimiter) : /(?!x)x/;
+    this.parseUntilRegex = parseUntilRegex
+      ? new RegExp(parseUntilRegex)
+      : /(?!x)x/;
   }
 
   static fromSettings(settings: DynamicTimetableSettings): TaskParser {
@@ -32,7 +37,8 @@ export class TaskParser {
       settings.dateDelimiter,
       settings.showStartTimeInTaskName,
       settings.showEstimateInTaskName,
-      settings.showCategoryNamesInTask
+      settings.showCategoryNamesInTask,
+      settings.parseUntilRegex
     );
   }
 
@@ -41,16 +47,22 @@ export class TaskParser {
     let firstUncompletedTaskFound = false;
     let nextDay = 0;
     let dateDelimiterFound = false;
+    let stopParsing = false;
 
     const yamlStartTime = this.getYamlStartTime(content);
     const tasks = content
       .split('\n')
       .map((line) => line.trim())
       .reduce((acc: Task[], task) => {
+        if (stopParsing) return acc;
         if (this.isDateDelimiterLine(task)) {
           if (firstUncompletedTaskFound) {
             dateDelimiterFound = true;
           }
+          return acc;
+        }
+        if (this.parseUntilRegex.test(task)) {
+          stopParsing = true;
           return acc;
         }
 

@@ -30,6 +30,7 @@ export interface DynamicTimetableSettings {
   pathToDictionary: string;
   showRemainingTime: boolean;
   customUrlScheme: string;
+  parseUntilRegex: string;
   [key: string]:
     | string
     | boolean
@@ -74,6 +75,7 @@ export default class DynamicTimetable extends Plugin {
     pathToDictionary: '',
     showRemainingTime: true,
     customUrlScheme: '',
+    parseUntilRegex: '',
   };
 
   async onload() {
