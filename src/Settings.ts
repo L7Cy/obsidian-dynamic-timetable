@@ -97,6 +97,12 @@ export class DynamicTimetableSettingTab extends PluginSettingTab {
       'Enter the URL scheme you want to execute when a task is completed. You can use the following placeholders: {{minutes}}, {{seconds}}, {{taskName}}',
       'your-app-scheme://doSomething?minutes={{minutes}}&seconds={{seconds}}&taskName={{taskName}}'
     );
+    this.createTextAreaSetting(
+      'Custom URL Scheme on Task Start',
+      'customUrlSchemeOnStart',
+      'Enter the URL scheme you want to execute when a task is started. You can use the following placeholders: {{minutes}}, {{seconds}}, {{taskName}}',
+      'your-app-scheme://startTask?minutes={{minutes}}&seconds={{seconds}}&taskName={{taskName}}'
+    );
     this.createToggleSetting(
       'Apply Background Color by Category (tag)',
       'applyBackgroundColorByCategory',
