@@ -37,7 +37,8 @@ export const StatisticsViewComponent = forwardRef((props: Props, ref) => {
     plugin.settings.dateDelimiter,
     plugin.settings.showStartTimeInTaskName,
     plugin.settings.showEstimateInTaskName,
-    plugin.settings.showCategoryNamesInTask
+    plugin.settings.showCategoryNamesInTask,
+    plugin.settings.showUntilRegex
   ).getCategoryPerformance(tasks);
 
   const performanceArray = Object.entries(performance).map(

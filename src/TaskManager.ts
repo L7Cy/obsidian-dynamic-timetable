@@ -161,26 +161,38 @@ export const taskFunctions = (plugin: DynamicTimetable) => {
     let tasks: Task[] = taskParser.filterAndParseTasks(content);
     const nextUncompletedTask = tasks.find((t) => !t.isCompleted && t !== task);
 
-    if (nextUncompletedTask && plugin.settings.customUrlScheme) {
-      let customUrl = plugin.settings.customUrlScheme;
-
+    if (nextUncompletedTask) {
       const nextTaskName = nextUncompletedTask.task;
       const nextTaskEstimate = nextUncompletedTask.estimate;
-      if (!nextTaskEstimate) {
-        return;
+
+      if (nextTaskEstimate) {
+        const nextTaskMinutes = parseInt(nextTaskEstimate);
+        const nextTaskSeconds = nextTaskMinutes * 60;
+
+        // Call custom URL on task completion (existing feature)
+        if (plugin.settings.customUrlScheme) {
+          let customUrl = plugin.settings.customUrlScheme;
+          customUrl = customUrl.replace('{{minutes}}', nextTaskMinutes.toString());
+          customUrl = customUrl.replace('{{seconds}}', nextTaskSeconds.toString());
+          customUrl = customUrl.replace(
+            '{{taskName}}',
+            encodeURIComponent(nextTaskName)
+          );
+          window.open(customUrl);
+        }
+
+        // Call custom URL on task start (new feature)
+        if (plugin.settings.customUrlSchemeOnStart) {
+          let customUrlOnStart = plugin.settings.customUrlSchemeOnStart;
+          customUrlOnStart = customUrlOnStart.replace('{{minutes}}', nextTaskMinutes.toString());
+          customUrlOnStart = customUrlOnStart.replace('{{seconds}}', nextTaskSeconds.toString());
+          customUrlOnStart = customUrlOnStart.replace(
+            '{{taskName}}',
+            encodeURIComponent(nextTaskName)
+          );
+          window.open(customUrlOnStart);
+        }
       }
-
-      const nextTaskMinutes = parseInt(nextTaskEstimate);
-      const nextTaskSeconds = nextTaskMinutes * 60;
-
-      customUrl = customUrl.replace('{{minutes}}', nextTaskMinutes.toString());
-      customUrl = customUrl.replace('{{seconds}}', nextTaskSeconds.toString());
-      customUrl = customUrl.replace(
-        '{{taskName}}',
-        encodeURIComponent(nextTaskName)
-      );
-
-      window.open(customUrl);
     }
   };
 
